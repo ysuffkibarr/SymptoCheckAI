@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import uvicorn
+from rapidfuzz import process
 
 def normalize_symptom(text):
     text = text.lower()
@@ -15,6 +16,15 @@ def normalize_symptom(text):
     text = re.sub(r"[^a-z\s]", "", text)
     text = re.sub(r"\s+", " ", text).strip()
     return text
+
+def map_to_known_symptoms(user_symptoms, known_symptoms):
+    mapped = []
+    for sym in user_symptoms:
+        sym = normalize_symptom(sym)
+        match, score, _ = process.extractOne(sym, known_symptoms, score_cutoff=60)
+        if match:
+            mapped.append(match)
+    return mapped
 
 app = FastAPI(title="Disease Prediction Based on Symptoms")
 
@@ -54,7 +64,14 @@ class SymptomClassifier:
         self.X = self.vectorizer.fit_transform(self.disease_corpus)
 
     def predict(self, symptom_text, top_n=5):
-        symptom_text = normalize_symptom(symptom_text)
+        user_symptom_list = [s.strip() for s in symptom_text.split(",")]
+        all_symptoms = self.get_all_symptoms()
+        mapped_symptoms = map_to_known_symptoms(user_symptom_list, all_symptoms)
+
+        if not mapped_symptoms:
+            return []
+
+        symptom_text = "".join(mapped_symptoms)
         user_vec = self.vectorizer.transform([symptom_text])
         similarities = cosine_similarity(user_vec, self.X).flatten()
         indexed = list(enumerate(similarities))
