@@ -114,6 +114,16 @@
         .result-item strong {
             color: #007bff;
         }
+
+        .rate-limit-warning {
+            color: #721c24;
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            padding: 10px;
+            border-radius: 6px;
+            font-weight: 500;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -215,6 +225,20 @@
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ symptoms: inputVal })
                 });
+
+                if (res.status === 429) {
+                    resultsDiv.innerHTML = `
+                        <div class="rate-limit-warning">
+                            <strong>Too Many Requests!</strong><br>
+                            You have exceeded the limit of 5 requests per minute. Please wait a moment and try again.
+                        </div>`;
+                    return;
+                }
+
+                if (!res.ok) {
+                    throw new Error("Server communication failed.");
+                }
+
                 const data = await res.json();
 
                 if (data.results && data.results.length > 0) {
@@ -233,7 +257,7 @@
                 }
             } catch (err) {
                 console.error(err);
-                resultsDiv.innerHTML = "<p>Error fetching results.</p>";
+                resultsDiv.innerHTML = "<p>Error fetching results. Please make sure the server is running.</p>";
             }
         }
     </script>

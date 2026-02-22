@@ -1,7 +1,8 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse
 import os
 
+from app.limiter import limiter
 from app.models.schemas import SymptomRequest
 from app.services.ml_service import SymptomClassifier
 
@@ -16,11 +17,13 @@ async def root():
         return f.read()
 
 @router.post("/api/analyze")
-async def analyze(req: SymptomRequest):
+@limiter.limit("5/minute") 
+async def analyze(request: Request, req: SymptomRequest):
     if not req.symptoms.strip():
         raise HTTPException(status_code=400, detail="Symptoms cannot be empty.")
     return {"results": classifier.predict(req.symptoms)}
 
 @router.get("/api/symptoms")
-async def get_symptom_list():
+@limiter.limit("15/minute")
+async def get_symptom_list(request: Request):
     return {"symptoms": classifier.get_all_symptoms()}
