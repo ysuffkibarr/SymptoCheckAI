@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SymptoCheckAI</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            color: #333;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 500px;
+            margin: auto;
+            background: #fff;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+            position: relative;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            color: #007bff;
+        }
+
+        .sympto label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        #symptomInput {
+            width: 100%;
+            height: 150px;
+            resize: vertical;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            margin-bottom: 5px;
+            position: relative;
+            z-index: 2;
+        }
+
+        #suggestions {
+            border: 1px solid #ccc;
+            border-top: none;
+            max-height: 150px;
+            overflow-y: auto;
+            background: white;
+            position: absolute;
+            width: 100%;
+            top: 180px;
+            left: 0;
+            z-index: 10;
+            border-radius: 0 0 8px 8px;
+            display: none;
+        }
+
+        .suggestion-item {
+            padding: 10px;
+            cursor: pointer;
+        }
+
+        .suggestion-item:hover {
+            background-color: #eee;
+        }
+
+        .check button {
+            width: 100%;
+            padding: 12px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            margin-top: 10px;
+        }
+
+        .check button:hover {
+            background-color: #218838;
+        }
+
+        .results {
+            margin-top: 20px;
+        }
+
+        .result-item {
+            background-color: #e9ecef;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            text-align: left;
+        }
+
+        .result-item strong {
+            color: #007bff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>SymptoCheckAI</h1>
+        </div>
+
+        <div class="sympto">
+            <label for="symptomInput">Enter your symptoms:</label>
+            <textarea id="symptomInput" placeholder="e.g. headache, fever, cough..."></textarea>
+            <div id="suggestions"></div>
+        </div>
+
+        <div class="check">
+            <button onclick="analyzeSymptoms()">Predict Disease</button>
+        </div>
+
+        <div class="results" id="results"></div>
+    </div>
+
+    <script>
+        let symptoms = [];
+
+        fetch("http://localhost:8000/api/symptoms")
+            .then(res => res.json())
+            .then(data => {
+                symptoms = data.symptoms;
+            })
+            .catch(() => {
+                symptoms = [];
+            });
+
+        const input = document.getElementById("symptomInput");
+        const suggestions = document.getElementById("suggestions");
+
+        input.addEventListener("input", () => {
+            const val = input.value.toLowerCase();
+            suggestions.innerHTML = "";
+
+            if (!val) {
+                suggestions.style.display = "none";
+                return;
+            }
+            const parts = val.split(",");
+            const lastPart = parts[parts.length - 1].trim();
+
+            if (!lastPart) {
+                suggestions.style.display = "none";
+                return;
+            }
+
+            const filtered = symptoms.filter(s =>
+                s.toLowerCase().startsWith(lastPart)
+            ).slice(0, 5);
+
+            if (filtered.length === 0) {
+                suggestions.style.display = "none";
+                return;
+            }
+
+            filtered.forEach(symptom => {
+                const div = document.createElement("div");
+                div.classList.add("suggestion-item");
+                div.textContent = symptom;
+                div.onclick = () => {
+                    parts[parts.length - 1] = symptom;
+                    input.value = parts.join(", ") + ", ";
+                    suggestions.innerHTML = "";
+                    suggestions.style.display = "none";
+                    input.focus();
+                };
+                suggestions.appendChild(div);
+            });
+
+            suggestions.style.display = "block";
+        });
+
+        document.addEventListener("click", (e) => {
+            if (!suggestions.contains(e.target) && e.target !== input) {
+                suggestions.innerHTML = "";
+                suggestions.style.display = "none";
+            }
+        });
+
+        async function analyzeSymptoms() {
+            const inputVal = input.value.trim();
+            const resultsDiv = document.getElementById("results");
+            resultsDiv.innerHTML = "";
+
+            if (!inputVal) {
+                alert("Please enter at least one symptom.");
+                return;
+            }
+
+            try {
+                const res = await fetch("http://localhost:8000/api/analyze", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ symptoms: inputVal })
+                });
+                const data = await res.json();
+
+                if (data.results && data.results.length > 0) {
+                    data.results.forEach(item => {
+                        const div = document.createElement("div");
+                        div.className = "result-item";
+                        div.innerHTML = `
+                            <strong>Disease:</strong> ${item.disease}<br>
+                            <strong>Similarity:</strong> ${item.similarity}<br>
+                            <strong>Matched Symptoms:</strong> ${item.matched_symptoms.join(", ")}<br>
+                        `;
+                        resultsDiv.appendChild(div);
+                    });
+                } else {
+                    resultsDiv.innerHTML = "<p>No disease matched.</p>";
+                }
+            } catch (err) {
+                console.error(err);
+                resultsDiv.innerHTML = "<p>Error fetching results.</p>";
+            }
+        }
+    </script>
+</body>
+</html>
