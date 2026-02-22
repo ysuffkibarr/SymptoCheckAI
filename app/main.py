@@ -4,6 +4,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from app.api import routes
 from app.limiter import limiter
+from app.logger import logger 
 
 app = FastAPI(title="SymptoCheckAI API")
 
@@ -17,4 +18,9 @@ app.add_middleware(
     allow_methods=["*"], 
     allow_headers=["*"], 
 )
+
 app.include_router(routes.router)
+
+@app.on_event("startup")
+async def startup_event():
+    logger.info("SymptoCheckAI Backend Services Successfully Started!")

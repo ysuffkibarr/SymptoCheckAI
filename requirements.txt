@@ -4,3 +4,4 @@ scikit-learn
 rapidfuzz
 pydantic
 slowapi
+loguru
