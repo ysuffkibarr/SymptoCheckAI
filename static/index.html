@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>SymptoCheckAI</title>
+    <title>SymptoCheckAI - Medical Dashboard</title>
     <style>
         * {
             box-sizing: border-box;
@@ -19,12 +19,12 @@
         }
 
         .container {
-            max-width: 500px;
+            max-width: 550px;
             margin: auto;
             background: #fff;
             padding: 25px;
             border-radius: 12px;
-            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
             position: relative;
         }
 
@@ -34,57 +34,69 @@
         }
 
         .header h1 {
-            font-size: 24px;
-            color: #007bff;
+            font-size: 26px;
+            color: #0056b3;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
         }
 
         .sympto label {
             display: block;
             font-weight: 600;
             margin-bottom: 10px;
+            color: #495057;
         }
 
         #symptomInput {
             width: 100%;
-            height: 150px;
+            height: 120px;
             resize: vertical;
-            padding: 10px;
-            font-size: 16px;
-            border: 1px solid #ccc;
+            padding: 12px;
+            font-size: 15px;
+            border: 1px solid #ced4da;
             border-radius: 8px;
             margin-bottom: 5px;
             position: relative;
             z-index: 2;
+            transition: border-color 0.3s;
+        }
+
+        #symptomInput:focus {
+            border-color: #80bdff;
+            outline: none;
         }
 
         #suggestions {
-            border: 1px solid #ccc;
+            border: 1px solid #ced4da;
             border-top: none;
             max-height: 150px;
             overflow-y: auto;
             background: white;
             position: absolute;
-            width: 100%;
-            top: 180px;
-            left: 0;
+            width: calc(100% - 50px);
             z-index: 10;
             border-radius: 0 0 8px 8px;
             display: none;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
 
         .suggestion-item {
-            padding: 10px;
+            padding: 10px 12px;
             cursor: pointer;
+            font-size: 14px;
         }
 
         .suggestion-item:hover {
-            background-color: #eee;
+            background-color: #f8f9fa;
+            color: #0056b3;
         }
 
         .check button {
             width: 100%;
             padding: 12px;
-            background-color: #28a745;
+            background-color: #007bff;
             color: white;
             border: none;
             font-size: 16px;
@@ -92,35 +104,88 @@
             border-radius: 8px;
             cursor: pointer;
             transition: background-color 0.3s ease;
-            margin-top: 10px;
+            margin-top: 15px;
         }
 
         .check button:hover {
-            background-color: #218838;
+            background-color: #0056b3;
         }
 
         .results {
-            margin-top: 20px;
+            margin-top: 25px;
         }
 
         .result-item {
-            background-color: #e9ecef;
-            padding: 10px;
-            border-radius: 6px;
-            margin-bottom: 10px;
+            background-color: #ffffff;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
             text-align: left;
+            border: 1px solid #e9ecef;
+            border-left: 5px solid #007bff;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.02);
         }
 
         .result-item strong {
-            color: #007bff;
+            color: #212529;
+        }
+
+        .disease-title {
+            font-size: 18px;
+            color: #0056b3;
+            margin-bottom: 8px;
+            border-bottom: 1px solid #f0f2f5;
+            padding-bottom: 5px;
+        }
+
+        .explanation-box {
+            margin-top: 12px;
+            padding-top: 10px;
+            border-top: 1px dashed #dee2e6;
+        }
+
+        .explanation-title {
+            font-size: 13px;
+            font-weight: bold;
+            color: #6c757d;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .explanation-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f8f9fa;
+            padding: 6px 10px;
+            border-radius: 6px;
+            margin-bottom: 6px;
+            font-size: 14px;
+            border: 1px solid #e9ecef;
+        }
+
+        .symptom-name {
+            text-transform: capitalize;
+            color: #495057;
+            font-weight: 500;
+        }
+
+        .symptom-weight {
+            background: #28a745;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
         }
 
         .rate-limit-warning {
             color: #721c24;
             background-color: #f8d7da;
             border: 1px solid #f5c6cb;
-            padding: 10px;
-            border-radius: 6px;
+            padding: 12px;
+            border-radius: 8px;
             font-weight: 500;
             text-align: center;
         }
@@ -129,17 +194,17 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>SymptoCheckAI</h1>
+            <h1>🩺 SymptoCheckAI</h1>
         </div>
 
         <div class="sympto">
-            <label for="symptomInput">Enter your symptoms:</label>
-            <textarea id="symptomInput" placeholder="e.g. headache, fever, cough..."></textarea>
+            <label for="symptomInput">Enter Patient Symptoms:</label>
+            <textarea id="symptomInput" placeholder="e.g. headache, fever, cough, joint pain..."></textarea>
             <div id="suggestions"></div>
         </div>
 
         <div class="check">
-            <button onclick="analyzeSymptoms()">Predict Disease</button>
+            <button onclick="analyzeSymptoms()">Run AI Diagnosis</button>
         </div>
 
         <div class="results" id="results"></div>
@@ -212,10 +277,11 @@
         async function analyzeSymptoms() {
             const inputVal = input.value.trim();
             const resultsDiv = document.getElementById("results");
-            resultsDiv.innerHTML = "";
+            resultsDiv.innerHTML = "<p style='text-align:center; color:#6c757d;'>Processing AI inference...</p>";
 
             if (!inputVal) {
                 alert("Please enter at least one symptom.");
+                resultsDiv.innerHTML = "";
                 return;
             }
 
@@ -240,24 +306,53 @@
                 }
 
                 const data = await res.json();
+                resultsDiv.innerHTML = "";
 
                 if (data.results && data.results.length > 0) {
                     data.results.forEach(item => {
+                        let explanationHtml = "";
+                        if (item.explanation && Object.keys(item.explanation).length > 0) {
+                            let listItems = "";
+                            for (const [symp, weight] of Object.entries(item.explanation)) {
+                                const cleanSymp = symp.replace(/_/g, ' '); 
+                                listItems += `
+                                    <div class="explanation-item">
+                                        <span class="symptom-name">${cleanSymp}</span>
+                                        <span class="symptom-weight">${weight} Impact</span>
+                                    </div>
+                                `;
+                            }
+                            
+                            explanationHtml = `
+                                <div class="explanation-box">
+                                    <div class="explanation-title">🧠 AI Decision Breakdown</div>
+                                    ${listItems}
+                                </div>
+                            `;
+                        }
+
+                        const confScore = item.similarity_score || item.similarity;
+
                         const div = document.createElement("div");
                         div.className = "result-item";
                         div.innerHTML = `
-                            <strong>Disease:</strong> ${item.disease}<br>
-                            <strong>Similarity:</strong> ${item.similarity}<br>
-                            <strong>Matched Symptoms:</strong> ${item.matched_symptoms.join(", ")}<br>
+                            <div class="disease-title"><strong>${item.disease}</strong></div>
+                            <div style="margin-bottom: 5px; font-size: 14px;">
+                                <strong>Confidence Score:</strong> ${confScore}
+                            </div>
+                            <div style="font-size: 14px; color: #6c757d;">
+                                <strong>Matched:</strong> ${item.matched_symptoms.join(", ")}
+                            </div>
+                            ${explanationHtml}
                         `;
                         resultsDiv.appendChild(div);
                     });
                 } else {
-                    resultsDiv.innerHTML = "<p>No disease matched.</p>";
+                    resultsDiv.innerHTML = "<p style='text-align:center; color:#dc3545;'>No disease matched the given symptoms.</p>";
                 }
             } catch (err) {
                 console.error(err);
-                resultsDiv.innerHTML = "<p>Error fetching results. Please make sure the server is running.</p>";
+                resultsDiv.innerHTML = "<p style='text-align:center; color:#dc3545;'>Error fetching results. Please make sure the FastAPI server is running.</p>";
             }
         }
     </script>

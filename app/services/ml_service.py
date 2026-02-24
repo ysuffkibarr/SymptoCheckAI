@@ -42,6 +42,7 @@ class SymptomClassifier:
         self.disease_corpus = [" ".join(d["symptoms"]) for d in self.data]
         self.vectorizer = TfidfVectorizer()
         self.X = self.vectorizer.fit_transform(self.disease_corpus)
+        self.feature_names = self.vectorizer.get_feature_names_out() 
 
     def predict(self, symptom_text, top_n=5):
         user_symptom_list = [s.strip() for s in symptom_text.split(",")]
@@ -50,10 +51,11 @@ class SymptomClassifier:
 
         if not mapped_symptoms:
             return []
-
-        symptom_text = "".join(mapped_symptoms)
-        user_vec = self.vectorizer.transform([symptom_text])
+        
+        symptom_text_joined = " ".join(mapped_symptoms)
+        user_vec = self.vectorizer.transform([symptom_text_joined])
         similarities = cosine_similarity(user_vec, self.X).flatten()
+        
         indexed = list(enumerate(similarities))
         indexed.sort(key=lambda x: x[1], reverse=True)
 
@@ -61,12 +63,27 @@ class SymptomClassifier:
         results = []
         for idx, sim in indexed:
             disease = self.data[idx]["disease"]
-            if disease not in seen:
+            if disease not in seen and sim > 0: 
                 seen.add(disease)
+
+                disease_vec = self.X[idx]
+                contributions = user_vec.multiply(disease_vec).toarray()[0]
+                
+                explanation = {}
+                nonzero_indices = contributions.nonzero()[0]
+                for f_idx in nonzero_indices:
+                    symptom_word = self.feature_names[f_idx]
+                    contrib_score = contributions[f_idx]
+                    percentage = round((contrib_score / sim) * 100, 1)
+                    explanation[symptom_word] = f"%{percentage}"
+
+                explanation = dict(sorted(explanation.items(), key=lambda item: float(item[1].strip('%')), reverse=True))
+
                 results.append({
                     "disease": disease,
-                    "similarity": round(float(sim), 3),
-                    "matched_symptoms": self.data[idx]["symptoms"]
+                    "similarity_score": round(float(sim), 3),
+                    "matched_symptoms": mapped_symptoms,
+                    "explanation": explanation
                 })
             if len(results) >= top_n:
                 break
