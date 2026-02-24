@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>SymptoCheckAI - Medical Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
         * {
             box-sizing: border-box;
@@ -93,8 +94,14 @@
             color: #0056b3;
         }
 
-        .check button {
-            width: 100%;
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .btn-primary {
+            flex: 1;
             padding: 12px;
             background-color: #007bff;
             color: white;
@@ -104,11 +111,28 @@
             border-radius: 8px;
             cursor: pointer;
             transition: background-color 0.3s ease;
-            margin-top: 15px;
         }
 
-        .check button:hover {
+        .btn-primary:hover {
             background-color: #0056b3;
+        }
+
+        .btn-success {
+            flex: 1;
+            padding: 12px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            display: none;
+        }
+
+        .btn-success:hover {
+            background-color: #218838;
         }
 
         .results {
@@ -179,16 +203,6 @@
             font-size: 12px;
             font-weight: bold;
         }
-
-        .rate-limit-warning {
-            color: #721c24;
-            background-color: #f8d7da;
-            border: 1px solid #f5c6cb;
-            padding: 12px;
-            border-radius: 8px;
-            font-weight: 500;
-            text-align: center;
-        }
     </style>
 </head>
 <body>
@@ -203,8 +217,9 @@
             <div id="suggestions"></div>
         </div>
 
-        <div class="check">
-            <button onclick="analyzeSymptoms()">Run AI Diagnosis</button>
+        <div class="button-group">
+            <button class="btn-primary" onclick="analyzeSymptoms()">Run AI Diagnosis</button>
+            <button id="downloadPdfBtn" class="btn-success" onclick="downloadReport()">📄 Export PDF Report</button>
         </div>
 
         <div class="results" id="results"></div>
@@ -224,6 +239,7 @@
 
         const input = document.getElementById("symptomInput");
         const suggestions = document.getElementById("suggestions");
+        const downloadPdfBtn = document.getElementById("downloadPdfBtn");
 
         input.addEventListener("input", () => {
             const val = input.value.toLowerCase();
@@ -277,6 +293,8 @@
         async function analyzeSymptoms() {
             const inputVal = input.value.trim();
             const resultsDiv = document.getElementById("results");
+
+            downloadPdfBtn.style.display = "none"; 
             resultsDiv.innerHTML = "<p style='text-align:center; color:#6c757d;'>Processing AI inference...</p>";
 
             if (!inputVal) {
@@ -292,18 +310,7 @@
                     body: JSON.stringify({ symptoms: inputVal })
                 });
 
-                if (res.status === 429) {
-                    resultsDiv.innerHTML = `
-                        <div class="rate-limit-warning">
-                            <strong>Too Many Requests!</strong><br>
-                            You have exceeded the limit of 5 requests per minute. Please wait a moment and try again.
-                        </div>`;
-                    return;
-                }
-
-                if (!res.ok) {
-                    throw new Error("Server communication failed.");
-                }
+                if (!res.ok) throw new Error("Server communication failed.");
 
                 const data = await res.json();
                 resultsDiv.innerHTML = "";
@@ -322,7 +329,6 @@
                                     </div>
                                 `;
                             }
-                            
                             explanationHtml = `
                                 <div class="explanation-box">
                                     <div class="explanation-title">🧠 AI Decision Breakdown</div>
@@ -347,6 +353,8 @@
                         `;
                         resultsDiv.appendChild(div);
                     });
+
+                    downloadPdfBtn.style.display = "block";
                 } else {
                     resultsDiv.innerHTML = "<p style='text-align:center; color:#dc3545;'>No disease matched the given symptoms.</p>";
                 }
@@ -354,6 +362,42 @@
                 console.error(err);
                 resultsDiv.innerHTML = "<p style='text-align:center; color:#dc3545;'>Error fetching results. Please make sure the FastAPI server is running.</p>";
             }
+        }
+
+        function downloadReport() {
+            const resultsHtml = document.getElementById("results").innerHTML;
+            const patientSymptoms = document.getElementById("symptomInput").value;
+            const currentDate = new Date().toLocaleString();
+
+            const reportWrapper = document.createElement("div");
+            reportWrapper.style.padding = "30px";
+            reportWrapper.style.fontFamily = "Arial, sans-serif";
+            
+            reportWrapper.innerHTML = `
+                <div style="text-align: center; border-bottom: 2px solid #0056b3; padding-bottom: 15px; margin-bottom: 20px;">
+                    <h1 style="color: #0056b3; margin: 0;">SymptoCheckAI Medical Systems</h1>
+                    <p style="color: #6c757d; margin: 5px 0 0 0;">Official AI Diagnostic Report</p>
+                </div>
+                <div style="margin-bottom: 20px; font-size: 14px;">
+                    <p><strong>Date of Inference:</strong> ${currentDate}</p>
+                    <p><strong>Patient Reported Symptoms:</strong> ${patientSymptoms}</p>
+                </div>
+                <h3 style="color: #333; margin-bottom: 15px;">AI Analysis Results:</h3>
+                ${resultsHtml}
+                <div style="margin-top: 40px; text-align: center; font-size: 11px; color: #999; border-top: 1px solid #eee; padding-top: 15px;">
+                    <p>This report is auto-generated by SymptoCheckAI engine. It is a preliminary analysis and does not replace professional medical diagnosis.</p>
+                </div>
+            `;
+
+            const opt = {
+                margin:       0.5,
+                filename:     'SymptoCheckAI_Clinical_Report.pdf',
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2 },
+                jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+            };
+
+            html2pdf().set(opt).from(reportWrapper).save();
         }
     </script>
 </body>
