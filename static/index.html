@@ -242,7 +242,7 @@
 
     <script>
         let symptoms = [];
-        fetch("http://localhost:8000/api/symptoms").then(res => res.json()).then(data => { symptoms = data.symptoms; }).catch(() => { symptoms = []; });
+        fetch("/api/symptoms").then(res => res.json()).then(data => { symptoms = data.symptoms; }).catch(() => { symptoms = []; });
         
         const input = document.getElementById("symptomInput"); 
         const suggestions = document.getElementById("suggestions"); 
@@ -271,7 +271,7 @@
             if (!inputVal) { alert("Please enter at least one symptom."); resultsDiv.innerHTML = ""; return; }
             
             try { 
-                const res = await fetch("http://localhost:8000/api/analyze", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ symptoms: inputVal }) }); 
+                const res = await fetch("/api/analyze", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ symptoms: inputVal }) }); 
                 if (!res.ok) throw new Error("Server communication failed."); 
                 const data = await res.json(); resultsDiv.innerHTML = "";
                 
