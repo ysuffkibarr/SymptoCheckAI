@@ -21,8 +21,6 @@
             --text-dark: #1d1d1f;
             --text-gray: #86868b;
             --border-color: rgba(0, 0, 0, 0.08);
-            
-            /* Akıcı animasyon eğrisi */
             --spring: cubic-bezier(0.25, 0.8, 0.25, 1);
         }
 
@@ -271,8 +269,20 @@
             if (!inputVal) { alert("Please enter at least one symptom."); resultsDiv.innerHTML = ""; return; }
             
             try { 
-                const res = await fetch("/api/analyze", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ symptoms: inputVal }) }); 
-                if (!res.ok) throw new Error("Server communication failed."); 
+                const res = await fetch("/api/analyze", { 
+                    method: "POST", 
+                    headers: { 
+                        "Content-Type": "application/json",
+                        "x-sympto-key": "kibar-ai-production-2026"
+                    }, 
+                    body: JSON.stringify({ symptoms: inputVal }) 
+                }); 
+                
+                if (!res.ok) {
+                    if (res.status === 401) throw new Error("Security bypass blocked! Unauthorized Access.");
+                    throw new Error("Server communication failed."); 
+                }
+                
                 const data = await res.json(); resultsDiv.innerHTML = "";
                 
                 if (data.results && data.results.length > 0) {
@@ -333,7 +343,10 @@
                 } else { 
                     resultsDiv.innerHTML = "<div style='text-align:center; padding:40px; color:var(--text-gray);'>No clinical match found. Please refine symptoms.</div>"; 
                 }
-            } catch (err) { console.error(err); resultsDiv.innerHTML = "<div style='text-align:center; color:#ff3b30; padding:20px;'>Connection error.</div>"; }
+            } catch (err) { 
+                console.error(err); 
+                resultsDiv.innerHTML = `<div style='text-align:center; color:#ff3b30; padding:20px; font-weight:600;'>${err.message}</div>`; 
+            }
         }
 
         function downloadReport() {

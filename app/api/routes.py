@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Depends, Header
 from fastapi.responses import HTMLResponse
 import os
 from app.limiter import limiter
@@ -10,12 +10,22 @@ router = APIRouter()
 csv_path = os.path.join("data", "DiseaseAndSymptoms.csv")
 classifier = SymptomClassifier(csv_path)
 
+# 🔒 YENİ: SİBER GÜVENLİK KİLİDİ (RAPIDAPI BYPASS KORUMASI)
+def verify_security_key(x_sympto_key: str = Header(None)):
+    SECRET_KEY = "kibar-ai-production-2026"
+    if x_sympto_key != SECRET_KEY:
+        raise HTTPException(
+            status_code=401, 
+            detail="Unauthorized Bypass Attempt! Please use the official RapidAPI endpoint."
+        )
+
 @router.get("/", response_class=HTMLResponse)
 async def root():
     with open("static/index.html", "r", encoding="utf-8") as f:
         return f.read()
 
-@router.post("/api/analyze")
+# 🔒 KORUMALI ROTA: "dependencies=[Depends(verify_security_key)]" eklendi!
+@router.post("/api/analyze", dependencies=[Depends(verify_security_key)])
 @limiter.limit("5/minute")
 async def analyze(request: Request, req: SymptomRequest):
     if not req.symptoms.strip():
@@ -30,6 +40,7 @@ async def analyze(request: Request, req: SymptomRequest):
     
     return {"results": result}
 
+# Bu rota sadece kelimeleri listelediği için açık kalabilir
 @router.get("/api/symptoms")
 @limiter.limit("15/minute")
 async def get_symptom_list(request: Request):
