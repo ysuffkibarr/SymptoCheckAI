@@ -3,56 +3,238 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>SymptoCheckAI - Medical Dashboard</title>
+    <title>SymptoCheckAI | Clinical Intelligence</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
     <style>
+        :root {
+            --bg-base: #f5f5f7;
+            --surface: rgba(255, 255, 255, 0.85);
+            --surface-solid: #ffffff;
+            --primary: #0066cc;
+            --primary-hover: #0055b3;
+            --success: #34c759;
+            --success-hover: #2eb050;
+            --text-dark: #1d1d1f;
+            --text-gray: #86868b;
+            --border-color: rgba(0, 0, 0, 0.08);
+            
+            /* Akıcı animasyon eğrisi */
+            --spring: cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; color: #333; padding: 20px; }
-        .container { max-width: 550px; margin: auto; background: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); position: relative; }
-        .header { text-align: center; margin-bottom: 20px; }
-        .header h1 { font-size: 26px; color: #0056b3; display: flex; align-items: center; justify-content: center; gap: 10px; }
-        .sympto label { display: block; font-weight: 600; margin-bottom: 10px; color: #495057; }
-        #symptomInput { width: 100%; height: 120px; resize: vertical; padding: 12px; font-size: 15px; border: 1px solid #ced4da; border-radius: 8px; margin-bottom: 5px; position: relative; z-index: 2; transition: border-color 0.3s; }
-        #symptomInput:focus { border-color: #80bdff; outline: none; }
-        #suggestions { border: 1px solid #ced4da; border-top: none; max-height: 150px; overflow-y: auto; background: white; position: absolute; width: calc(100% - 50px); z-index: 10; border-radius: 0 0 8px 8px; display: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .suggestion-item { padding: 10px 12px; cursor: pointer; font-size: 14px; }
-        .suggestion-item:hover { background-color: #f8f9fa; color: #0056b3; }
-        .button-group { display: flex; gap: 10px; margin-top: 15px; }
-        .btn-primary { flex: 1; padding: 12px; background-color: #007bff; color: white; border: none; font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer; transition: background-color 0.3s ease; }
-        .btn-primary:hover { background-color: #0056b3; }
-        .btn-success { flex: 1; padding: 12px; background-color: #28a745; color: white; border: none; font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer; transition: background-color 0.3s ease; display: none; }
-        .btn-success:hover { background-color: #218838; }
-        .results { margin-top: 25px; }
-        .result-item { background-color: #ffffff; padding: 15px; border-radius: 8px; margin-bottom: 15px; text-align: left; border: 1px solid #e9ecef; border-left: 5px solid #007bff; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
-        .result-item strong { color: #212529; }
-        .disease-title { font-size: 18px; color: #0056b3; margin-bottom: 8px; border-bottom: 1px solid #f0f2f5; padding-bottom: 5px; display: flex; justify-content: space-between; align-items: center;}
+        
+        body { 
+            font-family: 'Inter', -apple-system, sans-serif; 
+            background-color: var(--bg-base); 
+            color: var(--text-dark); 
+            padding: 40px 20px; 
+            line-height: 1.5; 
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
 
-        .triage-badge { padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;}
-        .triage-action { font-size: 13px; color: #6c757d; margin-bottom: 10px; padding: 8px; background: #f8f9fa; border-radius: 6px; border-left: 3px solid #ccc; }
+        .container { 
+            max-width: 680px; 
+            margin: 0 auto; 
+            background: var(--surface-solid); 
+            padding: 48px; 
+            border-radius: 24px; 
+            box-shadow: 0 20px 40px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.02); 
+            position: relative; 
+        }
 
-        .explanation-box { margin-top: 12px; padding-top: 10px; border-top: 1px dashed #dee2e6; }
-        .explanation-title { font-size: 13px; font-weight: bold; color: #6c757d; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
-        .explanation-item { display: flex; justify-content: space-between; align-items: center; background: #f8f9fa; padding: 6px 10px; border-radius: 6px; margin-bottom: 6px; font-size: 14px; border: 1px solid #e9ecef; }
-        .symptom-name { text-transform: capitalize; color: #495057; font-weight: 500; }
-        .symptom-weight { background: #6c757d; color: white; padding: 3px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; }
-        .rate-limit-warning { color: #721c24; background-color: #f8d7da; border: 1px solid #f5c6cb; padding: 12px; border-radius: 8px; font-weight: 500; text-align: center; }
+        .header { text-align: center; margin-bottom: 40px; }
+        .header h1 { 
+            font-size: 34px; 
+            font-weight: 700; 
+            letter-spacing: -0.015em; 
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, #1d1d1f 0%, #434345 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .header p { color: var(--text-gray); font-size: 16px; font-weight: 500; }
+
+        .medical-disclaimer {
+            background: rgba(0, 102, 204, 0.04);
+            border-radius: 16px;
+            padding: 20px 24px;
+            margin-bottom: 40px;
+            display: flex;
+            gap: 16px;
+            align-items: flex-start;
+            border: 1px solid rgba(0, 102, 204, 0.1);
+        }
+        .disclaimer-icon { color: var(--primary); font-size: 24px; line-height: 1; }
+        .disclaimer-content h4 { margin: 0 0 4px 0; color: var(--primary); font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+        .disclaimer-content p { margin: 0; color: #333336; font-size: 14px; line-height: 1.5; }
+        .highlight-alert { font-weight: 600; color: var(--primary); }
+
+        .sympto label { display: block; font-weight: 600; margin-bottom: 12px; font-size: 15px; }
+
+        .input-wrapper { position: relative; margin-bottom: 8px; }
+
+        #symptomInput { 
+            width: 100%; 
+            height: 150px; 
+            resize: vertical; 
+            padding: 20px; 
+            font-size: 16px; 
+            color: var(--text-dark);
+            border: 1px solid var(--border-color); 
+            border-radius: 18px; 
+            background-color: var(--surface-solid);
+            transition: all 0.3s var(--spring); 
+            font-family: inherit; 
+            box-shadow: 0 2px 8px rgba(0,0,0,0.02) inset;
+        }
+
+        #symptomInput:focus { 
+            border-color: var(--primary); 
+            outline: none; 
+            box-shadow: 0 0 0 4px rgba(0, 102, 204, 0.15); 
+        }
+        #symptomInput::placeholder { color: #a1a1a6; }
+
+        #suggestions { 
+            border: 1px solid var(--border-color); 
+            max-height: 200px; 
+            overflow-y: auto; 
+            background: var(--surface); 
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            position: absolute; 
+            width: 100%; 
+            z-index: 10; 
+            border-radius: 14px; 
+            display: none; 
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1); 
+            transform-origin: top;
+            animation: dropdownFade 0.3s var(--spring) forwards;
+        }
+        @keyframes dropdownFade {
+            from { opacity: 0; transform: translateY(-10px) scaleY(0.95); }
+            to { opacity: 1; transform: translateY(4px) scaleY(1); }
+        }
+
+        .suggestion-item { padding: 14px 20px; cursor: pointer; font-size: 15px; border-bottom: 1px solid rgba(0,0,0,0.04); transition: background 0.2s; }
+        .suggestion-item:last-child { border-bottom: none; }
+        .suggestion-item:hover { background: rgba(0, 102, 204, 0.08); color: var(--primary); font-weight: 500; }
+
+        .button-group { display: flex; gap: 16px; margin-top: 24px; }
+
+        .btn { 
+            flex: 1; 
+            padding: 18px; 
+            border: none; 
+            font-size: 16px; 
+            font-weight: 600; 
+            border-radius: 16px;
+            cursor: pointer; 
+            transition: all 0.4s var(--spring); 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .btn-primary { 
+            background-color: var(--primary); 
+            color: white; 
+            box-shadow: 0 4px 14px rgba(0, 102, 204, 0.3); 
+        }
+        .btn-primary:hover { background-color: var(--primary-hover); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0, 102, 204, 0.4); }
+        .btn-primary:active { transform: scale(0.97); }
+
+        .btn-success { 
+            background-color: var(--success); 
+            color: white; 
+            display: none; 
+            box-shadow: 0 4px 14px rgba(52, 199, 89, 0.3); 
+        }
+        .btn-success:hover { background-color: var(--success-hover); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(52, 199, 89, 0.4); }
+        .btn-success:active { transform: scale(0.97); }
+
+        .results { margin-top: 40px; }
+
+        .result-item { 
+            background-color: var(--surface-solid); 
+            padding: 28px; 
+            border-radius: 20px; 
+            margin-bottom: 24px; 
+            border: 1px solid var(--border-color); 
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03); 
+            opacity: 0;
+            transform: translateY(20px);
+            animation: slideUpFade 0.6s var(--spring) forwards;
+        }
+        @keyframes slideUpFade {
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .disease-title { font-size: 22px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; font-weight: 700; letter-spacing: -0.01em;}
+
+        .triage-badge { padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+
+        .triage-action { font-size: 14px; color: var(--text-dark); margin-bottom: 24px; padding: 16px 20px; background: #f5f5f7; border-radius: 12px; font-weight: 500; display: flex; align-items: center; gap: 12px;}
+
+        .stat-row { display: flex; justify-content: space-between; font-size: 15px; padding-bottom: 14px; margin-bottom: 14px; border-bottom: 1px solid rgba(0,0,0,0.04); }
+        .stat-label { color: var(--text-gray); font-weight: 500;}
+        .stat-value { font-weight: 600;}
+
+        .explanation-box { margin-top: 24px; background: #fbfbfd; border-radius: 16px; padding: 20px; border: 1px solid var(--border-color);}
+        .explanation-title { font-size: 12px; font-weight: 700; color: var(--text-gray); margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.05em; }
+
+        .explanation-item { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-size: 14px; }
+        .explanation-item:last-child { margin-bottom: 0; }
+        .symptom-name { font-weight: 500; text-transform: capitalize; }
+
+        .symptom-bar-container { display: flex; align-items: center; gap: 12px; width: 50%; justify-content: flex-end; }
+        .symptom-weight { color: var(--text-gray); font-size: 13px; font-weight: 600; min-width: 45px; text-align: right;}
+
+        .loading-text { text-align: center; color: var(--primary); font-weight: 500; padding: 40px; animation: pulse 2s infinite ease-in-out; }
+        @keyframes pulse { 0% { opacity: 0.4; transform: scale(0.98); } 50% { opacity: 1; transform: scale(1); } 100% { opacity: 0.4; transform: scale(0.98); } }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>🩺 SymptoCheckAI</h1>
+            <h1>SymptoCheckAI</h1>
+            <p>Clinical Intelligence Platform</p>
+        </div>
+
+        <div class="medical-disclaimer">
+            <div class="disclaimer-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+            </div>
+            <div class="disclaimer-content">
+                <h4>Experimental Algorithm</h4>
+                <p>Results are generated by an AI model and <span class="highlight-alert">do not replace professional diagnosis</span>. Always consult a physician.</p>
+            </div>
         </div>
 
         <div class="sympto">
-            <label for="symptomInput">Enter Patient Symptoms:</label>
-            <textarea id="symptomInput" placeholder="e.g. headache, fever, cough, joint pain..."></textarea>
-            <div id="suggestions"></div>
+            <label for="symptomInput">Patient Symptoms</label>
+            <div class="input-wrapper">
+                <textarea id="symptomInput" placeholder="Describe symptoms (e.g., severe headache, mild fever, fatigue)..."></textarea>
+                <div id="suggestions"></div>
+            </div>
         </div>
 
         <div class="button-group">
-            <button class="btn-primary" onclick="analyzeSymptoms()">Run AI Diagnosis</button>
-            <button id="downloadPdfBtn" class="btn-success" onclick="downloadReport()">📄 Export PDF Report</button>
+            <button class="btn btn-primary" onclick="analyzeSymptoms()">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                Analyze Symptoms
+            </button>
+            <button id="downloadPdfBtn" class="btn btn-success" onclick="downloadReport()">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                Export PDF
+            </button>
         </div>
 
         <div class="results" id="results"></div>
@@ -60,188 +242,130 @@
 
     <script>
         let symptoms = [];
-
-        fetch("http://localhost:8000/api/symptoms")
-            .then(res => res.json())
-            .then(data => { symptoms = data.symptoms; })
-            .catch(() => { symptoms = []; });
-
-        const input = document.getElementById("symptomInput");
-        const suggestions = document.getElementById("suggestions");
+        fetch("http://localhost:8000/api/symptoms").then(res => res.json()).then(data => { symptoms = data.symptoms; }).catch(() => { symptoms = []; });
+        
+        const input = document.getElementById("symptomInput"); 
+        const suggestions = document.getElementById("suggestions"); 
         const downloadPdfBtn = document.getElementById("downloadPdfBtn");
-
-        input.addEventListener("input", () => {
-            const val = input.value.toLowerCase();
-            suggestions.innerHTML = "";
-
-            if (!val) { suggestions.style.display = "none"; return; }
-            const parts = val.split(",");
-            const lastPart = parts[parts.length - 1].trim();
-
-            if (!lastPart) { suggestions.style.display = "none"; return; }
-
-            const filtered = symptoms.filter(s => s.toLowerCase().startsWith(lastPart)).slice(0, 5);
-
-            if (filtered.length === 0) { suggestions.style.display = "none"; return; }
-
-            filtered.forEach(symptom => {
-                const div = document.createElement("div");
-                div.classList.add("suggestion-item");
-                div.textContent = symptom;
-                div.onclick = () => {
-                    parts[parts.length - 1] = symptom;
-                    input.value = parts.join(", ") + ", ";
-                    suggestions.innerHTML = "";
-                    suggestions.style.display = "none";
-                    input.focus();
-                };
-                suggestions.appendChild(div);
-            });
-
-            suggestions.style.display = "block";
+        
+        input.addEventListener("input", () => { 
+            const val = input.value.toLowerCase(); suggestions.innerHTML = ""; 
+            if (!val) { suggestions.style.display = "none"; return; } 
+            const parts = val.split(","); const lastPart = parts[parts.length - 1].trim(); 
+            if (!lastPart) { suggestions.style.display = "none"; return; } 
+            const filtered = symptoms.filter(s => s.toLowerCase().startsWith(lastPart)).slice(0, 5); 
+            if (filtered.length === 0) { suggestions.style.display = "none"; return; } 
+            
+            filtered.forEach(symptom => { 
+                const div = document.createElement("div"); div.classList.add("suggestion-item"); div.textContent = symptom; 
+                div.onclick = () => { parts[parts.length - 1] = symptom; input.value = parts.join(", ") + ", "; suggestions.innerHTML = ""; suggestions.style.display = "none"; input.focus(); }; 
+                suggestions.appendChild(div); 
+            }); 
+            suggestions.style.display = "block"; 
         });
-
-        document.addEventListener("click", (e) => {
-            if (!suggestions.contains(e.target) && e.target !== input) {
-                suggestions.innerHTML = "";
-                suggestions.style.display = "none";
-            }
-        });
+        document.addEventListener("click", (e) => { if (!suggestions.contains(e.target) && e.target !== input) { suggestions.innerHTML = ""; suggestions.style.display = "none"; } });
 
         async function analyzeSymptoms() {
-            const inputVal = input.value.trim();
-            const resultsDiv = document.getElementById("results");
+            const inputVal = input.value.trim(); const resultsDiv = document.getElementById("results"); downloadPdfBtn.style.display = "none"; 
+            resultsDiv.innerHTML = "<div class='loading-text'>Processing clinical data...</div>";
+            if (!inputVal) { alert("Please enter at least one symptom."); resultsDiv.innerHTML = ""; return; }
             
-            downloadPdfBtn.style.display = "none"; 
-            resultsDiv.innerHTML = "<p style='text-align:center; color:#6c757d;'>Processing AI inference & Triage...</p>";
-
-            if (!inputVal) {
-                alert("Please enter at least one symptom.");
-                resultsDiv.innerHTML = "";
-                return;
-            }
-
-            try {
-                const res = await fetch("http://localhost:8000/api/analyze", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ symptoms: inputVal })
-                });
-
-                if (!res.ok) throw new Error("Server communication failed.");
-
-                const data = await res.json();
-                resultsDiv.innerHTML = "";
-
+            try { 
+                const res = await fetch("http://localhost:8000/api/analyze", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ symptoms: inputVal }) }); 
+                if (!res.ok) throw new Error("Server communication failed."); 
+                const data = await res.json(); resultsDiv.innerHTML = "";
+                
                 if (data.results && data.results.length > 0) {
-                    data.results.forEach(item => {
-                        let explanationHtml = "";
-                        if (item.explanation && Object.keys(item.explanation).length > 0) {
-                            let listItems = "";
-                            for (const [symp, weight] of Object.entries(item.explanation)) {
+                    data.results.forEach((item, index) => {
+                        let explanationHtml = ""; 
+                        if (item.explanation && Object.keys(item.explanation).length > 0) { 
+                            let listItems = ""; 
+                            for (const [symp, weight] of Object.entries(item.explanation)) { 
                                 const cleanSymp = symp.replace(/_/g, ' '); 
                                 listItems += `
                                     <div class="explanation-item">
                                         <span class="symptom-name">${cleanSymp}</span>
-                                        <span class="symptom-weight">${weight} Impact</span>
-                                    </div>
-                                `;
-                            }
-                            explanationHtml = `
-                                <div class="explanation-box">
-                                    <div class="explanation-title">🧠 AI Decision Breakdown</div>
-                                    ${listItems}
-                                </div>
-                            `;
+                                        <div class="symptom-bar-container">
+                                            <span class="symptom-weight">${weight}</span>
+                                        </div>
+                                    </div>`; 
+                            } 
+                            explanationHtml = `<div class="explanation-box"><div class="explanation-title">Decision Impact</div>${listItems}</div>`; 
                         }
-
-                        const confScore = item.similarity_score || item.similarity;
-
-                        let triageHtml = "";
-                        if (item.triage) {
-                            const textColor = item.triage.color === "#ffc107" ? "#000" : "#fff";
-                            triageHtml = `
-                                <span class="triage-badge" style="background-color: ${item.triage.color}; color: ${textColor};">
-                                    🚨 ${item.triage.level}
-                                </span>
-                            `;
+                        
+                        let triageHtml = ""; 
+                        let accentColor = "var(--primary)";
+                        if (item.triage) { 
+                            const textColor = item.triage.color === "#ffc107" ? "#1d1d1f" : "#ffffff"; 
+                            triageHtml = `<span class="triage-badge" style="background-color: ${item.triage.color}; color: ${textColor};">${item.triage.level}</span>`; 
+                            accentColor = item.triage.color;
                         }
-
-                        let triageActionHtml = "";
-                        if (item.triage) {
+                        
+                        let triageActionHtml = ""; 
+                        if (item.triage) { 
                             triageActionHtml = `
-                                <div class="triage-action" style="border-left-color: ${item.triage.color};">
-                                    <strong>Recommendation:</strong> ${item.triage.action}
-                                </div>
-                            `;
+                                <div class="triage-action">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${accentColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:8px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                                    ${item.triage.action}
+                                </div>`; 
                         }
-
-                        const div = document.createElement("div");
-                        div.className = "result-item";
-                        if(item.triage) {
-                            div.style.borderLeftColor = item.triage.color;
-                        }
-
+                        
+                        const div = document.createElement("div"); 
+                        div.className = "result-item"; 
+                        div.style.animationDelay = `${index * 0.15}s`;
+                        
                         div.innerHTML = `
-                            <div class="disease-title">
-                                <strong>${item.disease}</strong>
-                                ${triageHtml}
-                            </div>
+                            <div class="disease-title" style="color: ${accentColor}">${item.disease} ${triageHtml}</div>
                             ${triageActionHtml}
-                            <div style="margin-bottom: 5px; font-size: 14px;">
-                                <strong>Confidence Score:</strong> ${confScore}
+                            <div class="stat-row">
+                                <span class="stat-label">Confidence</span>
+                                <span class="stat-value">${(item.similarity_score * 100).toFixed(1)}%</span>
                             </div>
-                            <div style="font-size: 14px; color: #6c757d;">
-                                <strong>Matched:</strong> ${item.matched_symptoms.join(", ")}
+                            <div class="stat-row" style="border-bottom:none; margin-bottom:0;">
+                                <span class="stat-label">Matched Details</span>
+                                <span class="stat-value" style="text-align:right; max-width:60%; color:var(--text-gray); font-weight:400;">${item.matched_symptoms.join(", ")}</span>
                             </div>
                             ${explanationHtml}
-                        `;
-                        resultsDiv.appendChild(div);
-                    });
-                    
-                    downloadPdfBtn.style.display = "block";
-                } else {
-                    resultsDiv.innerHTML = "<p style='text-align:center; color:#dc3545;'>No disease matched the given symptoms.</p>";
+                        `; 
+                        resultsDiv.appendChild(div); 
+                    }); 
+                    downloadPdfBtn.style.display = "flex";
+                } else { 
+                    resultsDiv.innerHTML = "<div style='text-align:center; padding:40px; color:var(--text-gray);'>No clinical match found. Please refine symptoms.</div>"; 
                 }
-            } catch (err) {
-                console.error(err);
-                resultsDiv.innerHTML = "<p style='text-align:center; color:#dc3545;'>Error fetching results. Please make sure the FastAPI server is running.</p>";
-            }
+            } catch (err) { console.error(err); resultsDiv.innerHTML = "<div style='text-align:center; color:#ff3b30; padding:20px;'>Connection error.</div>"; }
         }
 
         function downloadReport() {
-            const resultsHtml = document.getElementById("results").innerHTML;
-            const patientSymptoms = document.getElementById("symptomInput").value;
-            const currentDate = new Date().toLocaleString();
-
-            const reportWrapper = document.createElement("div");
-            reportWrapper.style.padding = "30px";
-            reportWrapper.style.fontFamily = "Arial, sans-serif";
+            const resultsHtml = document.getElementById("results").innerHTML; const patientSymptoms = document.getElementById("symptomInput").value; const currentDate = new Date().toLocaleString();
+            const reportWrapper = document.createElement("div"); reportWrapper.style.padding = "40px"; reportWrapper.style.fontFamily = "'Inter', -apple-system, sans-serif"; reportWrapper.style.color = "#1d1d1f";
             
             reportWrapper.innerHTML = `
-                <div style="text-align: center; border-bottom: 2px solid #0056b3; padding-bottom: 15px; margin-bottom: 20px;">
-                    <h1 style="color: #0056b3; margin: 0;">SymptoCheckAI Medical Systems</h1>
-                    <p style="color: #6c757d; margin: 5px 0 0 0;">Official AI Diagnostic & Triage Report</p>
+                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 2px solid rgba(0,0,0,0.05); padding-bottom: 20px; margin-bottom: 30px;">
+                    <div>
+                        <h1 style="color: #0066cc; margin: 0; font-size: 24px; font-weight:700; letter-spacing:-0.02em;">SymptoCheckAI</h1>
+                        <p style="color: #86868b; margin: 4px 0 0 0; font-size: 13px; font-weight: 500;">Clinical Intelligence Report</p>
+                    </div>
+                    <div style="text-align:right; font-size: 11px; color: #86868b;">
+                        Date: ${currentDate}<br>Ref: AI-${Math.floor(Math.random()*100000)}
+                    </div>
                 </div>
-                <div style="margin-bottom: 20px; font-size: 14px;">
-                    <p><strong>Date of Inference:</strong> ${currentDate}</p>
-                    <p><strong>Patient Reported Symptoms:</strong> ${patientSymptoms}</p>
+                <div style="background-color: #f5f5f7; border-radius: 12px; padding: 15px 20px; margin-bottom: 30px; font-size: 11px; color: #1d1d1f;">
+                    <strong style="text-transform: uppercase; color:#0066cc;">Disclaimer:</strong> This is an AI-generated inference report. Does not substitute a physician's diagnosis.
                 </div>
-                <h3 style="color: #333; margin-bottom: 15px;">AI Analysis & Triage Results:</h3>
+                <div style="margin-bottom: 30px;">
+                    <h3 style="margin:0 0 10px 0; font-size:16px;">Clinical Notes</h3>
+                    <div style="background: #ffffff; padding: 16px; border-radius: 12px; border: 1px solid rgba(0,0,0,0.08); font-size: 13px;">${patientSymptoms}</div>
+                </div>
+                <h3 style="margin-bottom: 15px; font-size:16px;">Diagnostic Findings</h3>
                 ${resultsHtml}
-                <div style="margin-top: 40px; text-align: center; font-size: 11px; color: #999; border-top: 1px solid #eee; padding-top: 15px;">
-                    <p>This report is auto-generated by SymptoCheckAI engine. It is a preliminary analysis and does not replace professional medical diagnosis.</p>
-                </div>
             `;
+            
+            const style = document.createElement('style');
+            style.innerHTML = "@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap'); * { font-family: 'Inter', sans-serif !important; }";
+            reportWrapper.appendChild(style);
 
-            const opt = {
-                margin:       0.5,
-                filename:     'SymptoCheckAI_Triage_Report.pdf',
-                image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2 },
-                jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
-            };
-
+            const opt = { margin: 0.5, filename: 'SymptoCheck_Report.pdf', image: { type: 'jpeg', quality: 1 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' } };
             html2pdf().set(opt).from(reportWrapper).save();
         }
     </script>
