@@ -44,6 +44,31 @@ class SymptomClassifier:
         self.X = self.vectorizer.fit_transform(self.disease_corpus)
         self.feature_names = self.vectorizer.get_feature_names_out() 
 
+    def _get_triage_level(self, disease_name):
+        disease_lower = disease_name.lower()
+        
+        critical_keywords = ['attack', 'stroke', 'dengue', 'malaria', 'typhoid', 'failure', 'cancer', 'tuberculosis', 'pneumonia', 'heart']
+        low_keywords = ['cold', 'flu', 'allergy', 'acne', 'fungal', 'hemorrhoids', 'common']
+        
+        if any(keyword in disease_lower for keyword in critical_keywords):
+            return {
+                "level": "CRITICAL (RED)", 
+                "color": "#dc3545", 
+                "action": "Immediate medical attention required. Proceed to the nearest Emergency Room."
+            }
+        elif any(keyword in disease_lower for keyword in low_keywords):
+            return {
+                "level": "LOW (GREEN)", 
+                "color": "#28a745", 
+                "action": "Home care advised. Monitor symptoms and consult a doctor if they worsen."
+            }
+        else:
+            return {
+                "level": "MODERATE (YELLOW)", 
+                "color": "#ffc107", 
+                "action": "Schedule a polyclinic appointment for professional medical evaluation."
+            }
+
     def predict(self, symptom_text, top_n=5):
         user_symptom_list = [s.strip() for s in symptom_text.split(",")]
         all_symptoms = self.get_all_symptoms()
@@ -51,7 +76,7 @@ class SymptomClassifier:
 
         if not mapped_symptoms:
             return []
-        
+
         symptom_text_joined = " ".join(mapped_symptoms)
         user_vec = self.vectorizer.transform([symptom_text_joined])
         similarities = cosine_similarity(user_vec, self.X).flatten()
@@ -65,7 +90,7 @@ class SymptomClassifier:
             disease = self.data[idx]["disease"]
             if disease not in seen and sim > 0: 
                 seen.add(disease)
-
+                
                 disease_vec = self.X[idx]
                 contributions = user_vec.multiply(disease_vec).toarray()[0]
                 
@@ -76,14 +101,17 @@ class SymptomClassifier:
                     contrib_score = contributions[f_idx]
                     percentage = round((contrib_score / sim) * 100, 1)
                     explanation[symptom_word] = f"%{percentage}"
-
+                
                 explanation = dict(sorted(explanation.items(), key=lambda item: float(item[1].strip('%')), reverse=True))
+                
+                triage_info = self._get_triage_level(disease)
 
                 results.append({
                     "disease": disease,
                     "similarity_score": round(float(sim), 3),
                     "matched_symptoms": mapped_symptoms,
-                    "explanation": explanation
+                    "explanation": explanation,
+                    "triage": triage_info
                 })
             if len(results) >= top_n:
                 break

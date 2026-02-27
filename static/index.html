@@ -6,203 +6,36 @@
     <title>SymptoCheckAI - Medical Dashboard</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; color: #333; padding: 20px; }
+        .container { max-width: 550px; margin: auto; background: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); position: relative; }
+        .header { text-align: center; margin-bottom: 20px; }
+        .header h1 { font-size: 26px; color: #0056b3; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .sympto label { display: block; font-weight: 600; margin-bottom: 10px; color: #495057; }
+        #symptomInput { width: 100%; height: 120px; resize: vertical; padding: 12px; font-size: 15px; border: 1px solid #ced4da; border-radius: 8px; margin-bottom: 5px; position: relative; z-index: 2; transition: border-color 0.3s; }
+        #symptomInput:focus { border-color: #80bdff; outline: none; }
+        #suggestions { border: 1px solid #ced4da; border-top: none; max-height: 150px; overflow-y: auto; background: white; position: absolute; width: calc(100% - 50px); z-index: 10; border-radius: 0 0 8px 8px; display: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .suggestion-item { padding: 10px 12px; cursor: pointer; font-size: 14px; }
+        .suggestion-item:hover { background-color: #f8f9fa; color: #0056b3; }
+        .button-group { display: flex; gap: 10px; margin-top: 15px; }
+        .btn-primary { flex: 1; padding: 12px; background-color: #007bff; color: white; border: none; font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer; transition: background-color 0.3s ease; }
+        .btn-primary:hover { background-color: #0056b3; }
+        .btn-success { flex: 1; padding: 12px; background-color: #28a745; color: white; border: none; font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer; transition: background-color 0.3s ease; display: none; }
+        .btn-success:hover { background-color: #218838; }
+        .results { margin-top: 25px; }
+        .result-item { background-color: #ffffff; padding: 15px; border-radius: 8px; margin-bottom: 15px; text-align: left; border: 1px solid #e9ecef; border-left: 5px solid #007bff; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
+        .result-item strong { color: #212529; }
+        .disease-title { font-size: 18px; color: #0056b3; margin-bottom: 8px; border-bottom: 1px solid #f0f2f5; padding-bottom: 5px; display: flex; justify-content: space-between; align-items: center;}
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f0f2f5;
-            color: #333;
-            padding: 20px;
-        }
+        .triage-badge { padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;}
+        .triage-action { font-size: 13px; color: #6c757d; margin-bottom: 10px; padding: 8px; background: #f8f9fa; border-radius: 6px; border-left: 3px solid #ccc; }
 
-        .container {
-            max-width: 550px;
-            margin: auto;
-            background: #fff;
-            padding: 25px;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-            position: relative;
-        }
-
-        .header {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-
-        .header h1 {
-            font-size: 26px;
-            color: #0056b3;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-        }
-
-        .sympto label {
-            display: block;
-            font-weight: 600;
-            margin-bottom: 10px;
-            color: #495057;
-        }
-
-        #symptomInput {
-            width: 100%;
-            height: 120px;
-            resize: vertical;
-            padding: 12px;
-            font-size: 15px;
-            border: 1px solid #ced4da;
-            border-radius: 8px;
-            margin-bottom: 5px;
-            position: relative;
-            z-index: 2;
-            transition: border-color 0.3s;
-        }
-
-        #symptomInput:focus {
-            border-color: #80bdff;
-            outline: none;
-        }
-
-        #suggestions {
-            border: 1px solid #ced4da;
-            border-top: none;
-            max-height: 150px;
-            overflow-y: auto;
-            background: white;
-            position: absolute;
-            width: calc(100% - 50px);
-            z-index: 10;
-            border-radius: 0 0 8px 8px;
-            display: none;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-
-        .suggestion-item {
-            padding: 10px 12px;
-            cursor: pointer;
-            font-size: 14px;
-        }
-
-        .suggestion-item:hover {
-            background-color: #f8f9fa;
-            color: #0056b3;
-        }
-
-        .button-group {
-            display: flex;
-            gap: 10px;
-            margin-top: 15px;
-        }
-
-        .btn-primary {
-            flex: 1;
-            padding: 12px;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            font-size: 16px;
-            font-weight: bold;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-        }
-
-        .btn-primary:hover {
-            background-color: #0056b3;
-        }
-
-        .btn-success {
-            flex: 1;
-            padding: 12px;
-            background-color: #28a745;
-            color: white;
-            border: none;
-            font-size: 16px;
-            font-weight: bold;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-            display: none;
-        }
-
-        .btn-success:hover {
-            background-color: #218838;
-        }
-
-        .results {
-            margin-top: 25px;
-        }
-
-        .result-item {
-            background-color: #ffffff;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            text-align: left;
-            border: 1px solid #e9ecef;
-            border-left: 5px solid #007bff;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.02);
-        }
-
-        .result-item strong {
-            color: #212529;
-        }
-
-        .disease-title {
-            font-size: 18px;
-            color: #0056b3;
-            margin-bottom: 8px;
-            border-bottom: 1px solid #f0f2f5;
-            padding-bottom: 5px;
-        }
-
-        .explanation-box {
-            margin-top: 12px;
-            padding-top: 10px;
-            border-top: 1px dashed #dee2e6;
-        }
-
-        .explanation-title {
-            font-size: 13px;
-            font-weight: bold;
-            color: #6c757d;
-            margin-bottom: 8px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .explanation-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: #f8f9fa;
-            padding: 6px 10px;
-            border-radius: 6px;
-            margin-bottom: 6px;
-            font-size: 14px;
-            border: 1px solid #e9ecef;
-        }
-
-        .symptom-name {
-            text-transform: capitalize;
-            color: #495057;
-            font-weight: 500;
-        }
-
-        .symptom-weight {
-            background: #28a745;
-            color: white;
-            padding: 3px 8px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: bold;
-        }
+        .explanation-box { margin-top: 12px; padding-top: 10px; border-top: 1px dashed #dee2e6; }
+        .explanation-title { font-size: 13px; font-weight: bold; color: #6c757d; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .explanation-item { display: flex; justify-content: space-between; align-items: center; background: #f8f9fa; padding: 6px 10px; border-radius: 6px; margin-bottom: 6px; font-size: 14px; border: 1px solid #e9ecef; }
+        .symptom-name { text-transform: capitalize; color: #495057; font-weight: 500; }
+        .symptom-weight { background: #6c757d; color: white; padding: 3px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; }
+        .rate-limit-warning { color: #721c24; background-color: #f8d7da; border: 1px solid #f5c6cb; padding: 12px; border-radius: 8px; font-weight: 500; text-align: center; }
     </style>
 </head>
 <body>
@@ -230,12 +63,8 @@
 
         fetch("http://localhost:8000/api/symptoms")
             .then(res => res.json())
-            .then(data => {
-                symptoms = data.symptoms;
-            })
-            .catch(() => {
-                symptoms = [];
-            });
+            .then(data => { symptoms = data.symptoms; })
+            .catch(() => { symptoms = []; });
 
         const input = document.getElementById("symptomInput");
         const suggestions = document.getElementById("suggestions");
@@ -245,26 +74,15 @@
             const val = input.value.toLowerCase();
             suggestions.innerHTML = "";
 
-            if (!val) {
-                suggestions.style.display = "none";
-                return;
-            }
+            if (!val) { suggestions.style.display = "none"; return; }
             const parts = val.split(",");
             const lastPart = parts[parts.length - 1].trim();
 
-            if (!lastPart) {
-                suggestions.style.display = "none";
-                return;
-            }
+            if (!lastPart) { suggestions.style.display = "none"; return; }
 
-            const filtered = symptoms.filter(s =>
-                s.toLowerCase().startsWith(lastPart)
-            ).slice(0, 5);
+            const filtered = symptoms.filter(s => s.toLowerCase().startsWith(lastPart)).slice(0, 5);
 
-            if (filtered.length === 0) {
-                suggestions.style.display = "none";
-                return;
-            }
+            if (filtered.length === 0) { suggestions.style.display = "none"; return; }
 
             filtered.forEach(symptom => {
                 const div = document.createElement("div");
@@ -293,9 +111,9 @@
         async function analyzeSymptoms() {
             const inputVal = input.value.trim();
             const resultsDiv = document.getElementById("results");
-
+            
             downloadPdfBtn.style.display = "none"; 
-            resultsDiv.innerHTML = "<p style='text-align:center; color:#6c757d;'>Processing AI inference...</p>";
+            resultsDiv.innerHTML = "<p style='text-align:center; color:#6c757d;'>Processing AI inference & Triage...</p>";
 
             if (!inputVal) {
                 alert("Please enter at least one symptom.");
@@ -339,10 +157,37 @@
 
                         const confScore = item.similarity_score || item.similarity;
 
+                        let triageHtml = "";
+                        if (item.triage) {
+                            const textColor = item.triage.color === "#ffc107" ? "#000" : "#fff";
+                            triageHtml = `
+                                <span class="triage-badge" style="background-color: ${item.triage.color}; color: ${textColor};">
+                                    🚨 ${item.triage.level}
+                                </span>
+                            `;
+                        }
+
+                        let triageActionHtml = "";
+                        if (item.triage) {
+                            triageActionHtml = `
+                                <div class="triage-action" style="border-left-color: ${item.triage.color};">
+                                    <strong>Recommendation:</strong> ${item.triage.action}
+                                </div>
+                            `;
+                        }
+
                         const div = document.createElement("div");
                         div.className = "result-item";
+                        if(item.triage) {
+                            div.style.borderLeftColor = item.triage.color;
+                        }
+
                         div.innerHTML = `
-                            <div class="disease-title"><strong>${item.disease}</strong></div>
+                            <div class="disease-title">
+                                <strong>${item.disease}</strong>
+                                ${triageHtml}
+                            </div>
+                            ${triageActionHtml}
                             <div style="margin-bottom: 5px; font-size: 14px;">
                                 <strong>Confidence Score:</strong> ${confScore}
                             </div>
@@ -353,7 +198,7 @@
                         `;
                         resultsDiv.appendChild(div);
                     });
-
+                    
                     downloadPdfBtn.style.display = "block";
                 } else {
                     resultsDiv.innerHTML = "<p style='text-align:center; color:#dc3545;'>No disease matched the given symptoms.</p>";
@@ -376,13 +221,13 @@
             reportWrapper.innerHTML = `
                 <div style="text-align: center; border-bottom: 2px solid #0056b3; padding-bottom: 15px; margin-bottom: 20px;">
                     <h1 style="color: #0056b3; margin: 0;">SymptoCheckAI Medical Systems</h1>
-                    <p style="color: #6c757d; margin: 5px 0 0 0;">Official AI Diagnostic Report</p>
+                    <p style="color: #6c757d; margin: 5px 0 0 0;">Official AI Diagnostic & Triage Report</p>
                 </div>
                 <div style="margin-bottom: 20px; font-size: 14px;">
                     <p><strong>Date of Inference:</strong> ${currentDate}</p>
                     <p><strong>Patient Reported Symptoms:</strong> ${patientSymptoms}</p>
                 </div>
-                <h3 style="color: #333; margin-bottom: 15px;">AI Analysis Results:</h3>
+                <h3 style="color: #333; margin-bottom: 15px;">AI Analysis & Triage Results:</h3>
                 ${resultsHtml}
                 <div style="margin-top: 40px; text-align: center; font-size: 11px; color: #999; border-top: 1px solid #eee; padding-top: 15px;">
                     <p>This report is auto-generated by SymptoCheckAI engine. It is a preliminary analysis and does not replace professional medical diagnosis.</p>
@@ -391,7 +236,7 @@
 
             const opt = {
                 margin:       0.5,
-                filename:     'SymptoCheckAI_Clinical_Report.pdf',
+                filename:     'SymptoCheckAI_Triage_Report.pdf',
                 image:        { type: 'jpeg', quality: 0.98 },
                 html2canvas:  { scale: 2 },
                 jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
