@@ -73,11 +73,6 @@
         .disclaimer-content p { margin: 0; color: #333336; font-size: 14px; line-height: 1.5; }
         .highlight-alert { font-weight: 600; color: var(--primary); }
 
-        .api-key-container { margin-bottom: 24px; }
-        .api-key-container label { display: block; font-weight: 600; margin-bottom: 8px; font-size: 14px; color: var(--text-gray); }
-        .api-key-container input { width: 100%; padding: 14px 20px; border-radius: 12px; border: 1px solid var(--border-color); font-size: 15px; outline: none; transition: border-color 0.3s; }
-        .api-key-container input:focus { border-color: var(--primary); }
-
         .sympto label { display: block; font-weight: 600; margin-bottom: 12px; font-size: 15px; }
         .input-wrapper { position: relative; margin-bottom: 8px; }
 
@@ -221,11 +216,6 @@
             </div>
         </div>
 
-        <div class="api-key-container">
-            <label for="apiKeyInput">RapidAPI Security Key</label>
-            <input type="password" id="apiKeyInput" placeholder="Enter your access key to unlock predictions...">
-        </div>
-
         <div class="sympto">
             <label for="symptomInput">Patient Symptoms</label>
             <div class="input-wrapper">
@@ -329,27 +319,23 @@
 
         async function analyzeSymptoms() {
             const inputVal = input.value.trim(); 
-            const apiKeyVal = document.getElementById("apiKeyInput").value.trim();
             const resultsDiv = document.getElementById("results"); 
             downloadPdfBtn.style.display = "none"; 
             
             resultsDiv.innerHTML = "<div class='loading-text'>Processing clinical data...</div>";
             
-            if (!apiKeyVal) { alert("Please enter your API Key first."); resultsDiv.innerHTML = ""; return; }
             if (!inputVal) { alert("Please enter at least one symptom."); resultsDiv.innerHTML = ""; return; }
             
             try { 
                 const res = await fetch("/api/analyze", { 
                     method: "POST", 
                     headers: { 
-                        "Content-Type": "application/json",
-                        "x-sympto-key": apiKeyVal
+                        "Content-Type": "application/json"
                     }, 
                     body: JSON.stringify({ symptoms: inputVal }) 
                 }); 
                 
                 if (!res.ok) {
-                    if (res.status === 401) throw new Error("Security bypass blocked! Unauthorized Access or Invalid API Key.");
                     if (res.status === 429) throw new Error("Too many requests! Please wait a minute before analyzing again.");
                     throw new Error("Server communication failed."); 
                 }

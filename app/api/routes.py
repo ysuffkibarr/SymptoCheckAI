@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Request, Depends, Header
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse
 import os
 from pathlib import Path
@@ -16,20 +16,12 @@ index_path = BASE_DIR / "static" / "index.html"
 
 classifier = SymptomClassifier(str(csv_path), str(model_path))
 
-def verify_security_key(x_sympto_key: str = Header(None)):
-    SECRET_KEY = os.getenv("SYMPTO_SECRET_KEY", "kibar-ai-production-2026")
-    if not x_sympto_key or x_sympto_key != SECRET_KEY:
-        raise HTTPException(
-            status_code=401, 
-            detail="Unauthorized Bypass Attempt! Invalid or missing API Key."
-        )
-
 @router.get("/", response_class=HTMLResponse)
 async def root():
     with open(index_path, "r", encoding="utf-8") as f:
         return f.read()
 
-@router.post("/api/analyze", dependencies=[Depends(verify_security_key)])
+@router.post("/api/analyze")
 @limiter.limit("5/minute")
 async def analyze(request: Request, req: SymptomRequest):
     if not req.symptoms.strip():
