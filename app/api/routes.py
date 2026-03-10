@@ -10,7 +10,6 @@ router = APIRouter()
 csv_path = os.path.join("data", "DiseaseAndSymptoms.csv")
 classifier = SymptomClassifier(csv_path)
 
-# 🔒 YENİ: SİBER GÜVENLİK KİLİDİ (RAPIDAPI BYPASS KORUMASI)
 def verify_security_key(x_sympto_key: str = Header(None)):
     SECRET_KEY = "kibar-ai-production-2026"
     if x_sympto_key != SECRET_KEY:
@@ -24,7 +23,6 @@ async def root():
     with open("static/index.html", "r", encoding="utf-8") as f:
         return f.read()
 
-# 🔒 KORUMALI ROTA: "dependencies=[Depends(verify_security_key)]" eklendi!
 @router.post("/api/analyze", dependencies=[Depends(verify_security_key)])
 @limiter.limit("5/minute")
 async def analyze(request: Request, req: SymptomRequest):
@@ -40,7 +38,6 @@ async def analyze(request: Request, req: SymptomRequest):
     
     return {"results": result}
 
-# Bu rota sadece kelimeleri listelediği için açık kalabilir
 @router.get("/api/symptoms")
 @limiter.limit("15/minute")
 async def get_symptom_list(request: Request):
