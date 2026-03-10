@@ -9,7 +9,7 @@ from rapidfuzz import process
 def normalize_symptom(text):
     text = text.lower()
     text = re.sub(r"[_\-]", " ", text)
-    text = re.sub(r"[^a-z\s]", "", text)
+    text = re.sub(r"[^a-z0-9\s]", "", text) 
     text = re.sub(r"\s+", " ", text).strip()
     return text
 
@@ -17,6 +17,9 @@ def map_to_known_symptoms(user_symptoms, known_symptoms):
     mapped = []
     for sym in user_symptoms:
         sym = normalize_symptom(sym)
+        if not sym:
+            continue
+            
         result = process.extractOne(sym, known_symptoms, score_cutoff=60)
         if result:
             match, score, _ = result

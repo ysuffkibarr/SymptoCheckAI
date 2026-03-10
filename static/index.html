@@ -21,8 +21,6 @@
             --text-dark: #1d1d1f;
             --text-gray: #86868b;
             --border-color: rgba(0, 0, 0, 0.08);
-            
-            /* Akıcı animasyon eğrisi */
             --spring: cubic-bezier(0.25, 0.8, 0.25, 1);
         }
 
@@ -75,8 +73,12 @@
         .disclaimer-content p { margin: 0; color: #333336; font-size: 14px; line-height: 1.5; }
         .highlight-alert { font-weight: 600; color: var(--primary); }
 
-        .sympto label { display: block; font-weight: 600; margin-bottom: 12px; font-size: 15px; }
+        .api-key-container { margin-bottom: 24px; }
+        .api-key-container label { display: block; font-weight: 600; margin-bottom: 8px; font-size: 14px; color: var(--text-gray); }
+        .api-key-container input { width: 100%; padding: 14px 20px; border-radius: 12px; border: 1px solid var(--border-color); font-size: 15px; outline: none; transition: border-color 0.3s; }
+        .api-key-container input:focus { border-color: var(--primary); }
 
+        .sympto label { display: block; font-weight: 600; margin-bottom: 12px; font-size: 15px; }
         .input-wrapper { position: relative; margin-bottom: 8px; }
 
         #symptomInput { 
@@ -84,7 +86,7 @@
             height: 150px; 
             resize: vertical; 
             padding: 20px; 
-            padding-right: 60px; /* Mikrofon butonu için sağdan boşluk bıraktık */
+            padding-right: 60px; 
             font-size: 16px; 
             color: var(--text-dark);
             border: 1px solid var(--border-color); 
@@ -219,6 +221,11 @@
             </div>
         </div>
 
+        <div class="api-key-container">
+            <label for="apiKeyInput">RapidAPI Security Key</label>
+            <input type="password" id="apiKeyInput" placeholder="Enter your access key to unlock predictions...">
+        </div>
+
         <div class="sympto">
             <label for="symptomInput">Patient Symptoms</label>
             <div class="input-wrapper">
@@ -254,7 +261,6 @@
         const suggestions = document.getElementById("suggestions"); 
         const downloadPdfBtn = document.getElementById("downloadPdfBtn");
         
-        // --- YENİ: SPEECH-TO-TEXT (SESLİ KOMUT) ENTEGRASYONU ---
         const micBtn = document.getElementById('micBtn');
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
@@ -262,7 +268,7 @@
             const recognition = new SpeechRecognition();
             recognition.continuous = false;
             recognition.interimResults = false;
-            recognition.lang = 'en-US'; // Semptomları İngilizce alıyoruz
+            recognition.lang = 'en-US';
 
             let isRecording = false;
 
@@ -276,7 +282,7 @@
 
             recognition.onstart = () => {
                 isRecording = true;
-                micBtn.style.backgroundColor = '#ff3b30'; // Kayıt sırasında kırmızı olur
+                micBtn.style.backgroundColor = '#ff3b30'; 
                 micBtn.style.color = 'white';
                 micBtn.style.transform = 'scale(1.1)';
                 input.placeholder = "Listening... Please speak your symptoms.";
@@ -284,7 +290,6 @@
 
             recognition.onresult = (event) => {
                 const transcript = event.results[0][0].transcript;
-                // Eğer inputta zaten yazı varsa virgül koyup devamını ekler
                 input.value += (input.value ? ', ' : '') + transcript; 
             };
 
@@ -301,11 +306,9 @@
                 input.placeholder = "Describe symptoms (e.g., severe headache, mild fever, fatigue)...";
             };
         } else {
-            // Tarayıcı desteklemiyorsa butonu gizler
             micBtn.style.display = 'none';
             console.warn("Speech Recognition API is not supported in this browser.");
         }
-        // --------------------------------------------------------
 
         input.addEventListener("input", () => { 
             const val = input.value.toLowerCase(); suggestions.innerHTML = ""; 
@@ -325,8 +328,14 @@
         document.addEventListener("click", (e) => { if (!suggestions.contains(e.target) && e.target !== input) { suggestions.innerHTML = ""; suggestions.style.display = "none"; } });
 
         async function analyzeSymptoms() {
-            const inputVal = input.value.trim(); const resultsDiv = document.getElementById("results"); downloadPdfBtn.style.display = "none"; 
+            const inputVal = input.value.trim(); 
+            const apiKeyVal = document.getElementById("apiKeyInput").value.trim();
+            const resultsDiv = document.getElementById("results"); 
+            downloadPdfBtn.style.display = "none"; 
+            
             resultsDiv.innerHTML = "<div class='loading-text'>Processing clinical data...</div>";
+            
+            if (!apiKeyVal) { alert("Please enter your API Key first."); resultsDiv.innerHTML = ""; return; }
             if (!inputVal) { alert("Please enter at least one symptom."); resultsDiv.innerHTML = ""; return; }
             
             try { 
@@ -334,13 +343,14 @@
                     method: "POST", 
                     headers: { 
                         "Content-Type": "application/json",
-                        "x-sympto-key": "kibar-ai-production-2026"
+                        "x-sympto-key": apiKeyVal
                     }, 
                     body: JSON.stringify({ symptoms: inputVal }) 
                 }); 
                 
                 if (!res.ok) {
-                    if (res.status === 401) throw new Error("Security bypass blocked! Unauthorized Access.");
+                    if (res.status === 401) throw new Error("Security bypass blocked! Unauthorized Access or Invalid API Key.");
+                    if (res.status === 429) throw new Error("Too many requests! Please wait a minute before analyzing again.");
                     throw new Error("Server communication failed."); 
                 }
                 
@@ -411,8 +421,14 @@
         }
 
         function downloadReport() {
-            const resultsHtml = document.getElementById("results").innerHTML; const patientSymptoms = document.getElementById("symptomInput").value; const currentDate = new Date().toLocaleString();
-            const reportWrapper = document.createElement("div"); reportWrapper.style.padding = "40px"; reportWrapper.style.fontFamily = "'Inter', -apple-system, sans-serif"; reportWrapper.style.color = "#1d1d1f";
+            const resultsHtml = document.getElementById("results").innerHTML; 
+            const patientSymptoms = document.getElementById("symptomInput").value; 
+            const currentDate = new Date().toLocaleString();
+            
+            const reportWrapper = document.createElement("div"); 
+            reportWrapper.style.padding = "40px"; 
+            reportWrapper.style.fontFamily = "'Inter', -apple-system, sans-serif"; 
+            reportWrapper.style.color = "#1d1d1f";
             
             reportWrapper.innerHTML = `
                 <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 2px solid rgba(0,0,0,0.05); padding-bottom: 20px; margin-bottom: 30px;">
@@ -439,7 +455,13 @@
             style.innerHTML = "@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap'); * { font-family: 'Inter', sans-serif !important; }";
             reportWrapper.appendChild(style);
 
-            const opt = { margin: 0.5, filename: 'SymptoCheck_Report.pdf', image: { type: 'jpeg', quality: 1 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' } };
+            const opt = { 
+                margin: 0.5, 
+                filename: 'SymptoCheck_Report.pdf', 
+                image: { type: 'jpeg', quality: 1 }, 
+                html2canvas: { scale: 2, useCORS: true }, 
+                jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' } 
+            };
             html2pdf().set(opt).from(reportWrapper).save();
         }
     </script>
