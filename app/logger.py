@@ -1,9 +1,13 @@
 import sys
 import os
+from pathlib import Path
 from loguru import logger
 
-if not os.path.exists("logs"):
-    os.makedirs("logs")
+BASE_DIR = Path(__file__).resolve().parent.parent
+LOG_DIR = BASE_DIR / "logs"
+
+if not LOG_DIR.exists():
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
 
 logger.remove()
 
@@ -13,7 +17,7 @@ logger.add(
 )
 
 logger.add(
-    "logs/symptocheck.log", 
+    str(LOG_DIR / "symptocheck.log"), 
     rotation="1 MB", 
     retention="10 days", 
     level="INFO",
