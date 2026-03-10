@@ -21,6 +21,8 @@
             --text-dark: #1d1d1f;
             --text-gray: #86868b;
             --border-color: rgba(0, 0, 0, 0.08);
+            
+            /* Akıcı animasyon eğrisi */
             --spring: cubic-bezier(0.25, 0.8, 0.25, 1);
         }
 
@@ -82,6 +84,7 @@
             height: 150px; 
             resize: vertical; 
             padding: 20px; 
+            padding-right: 60px; /* Mikrofon butonu için sağdan boşluk bıraktık */
             font-size: 16px; 
             color: var(--text-dark);
             border: 1px solid var(--border-color); 
@@ -220,6 +223,11 @@
             <label for="symptomInput">Patient Symptoms</label>
             <div class="input-wrapper">
                 <textarea id="symptomInput" placeholder="Describe symptoms (e.g., severe headache, mild fever, fatigue)..."></textarea>
+                
+                <button id="micBtn" title="Speak your symptoms" style="position: absolute; right: 15px; bottom: 15px; background: var(--surface-solid); border: 1px solid var(--border-color); border-radius: 50%; width: 40px; height: 40px; font-size: 18px; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: center; outline: none;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+                </button>
+
                 <div id="suggestions"></div>
             </div>
         </div>
@@ -246,6 +254,59 @@
         const suggestions = document.getElementById("suggestions"); 
         const downloadPdfBtn = document.getElementById("downloadPdfBtn");
         
+        // --- YENİ: SPEECH-TO-TEXT (SESLİ KOMUT) ENTEGRASYONU ---
+        const micBtn = document.getElementById('micBtn');
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+        if (SpeechRecognition) {
+            const recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            recognition.lang = 'en-US'; // Semptomları İngilizce alıyoruz
+
+            let isRecording = false;
+
+            micBtn.addEventListener('click', () => {
+                if (isRecording) {
+                    recognition.stop();
+                    return;
+                }
+                recognition.start();
+            });
+
+            recognition.onstart = () => {
+                isRecording = true;
+                micBtn.style.backgroundColor = '#ff3b30'; // Kayıt sırasında kırmızı olur
+                micBtn.style.color = 'white';
+                micBtn.style.transform = 'scale(1.1)';
+                input.placeholder = "Listening... Please speak your symptoms.";
+            };
+
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                // Eğer inputta zaten yazı varsa virgül koyup devamını ekler
+                input.value += (input.value ? ', ' : '') + transcript; 
+            };
+
+            recognition.onerror = (event) => {
+                console.error("Microphone error:", event.error);
+                input.placeholder = "Describe symptoms (e.g., severe headache, mild fever, fatigue)...";
+            };
+
+            recognition.onend = () => {
+                isRecording = false;
+                micBtn.style.backgroundColor = 'var(--surface-solid)';
+                micBtn.style.color = 'initial';
+                micBtn.style.transform = 'scale(1)';
+                input.placeholder = "Describe symptoms (e.g., severe headache, mild fever, fatigue)...";
+            };
+        } else {
+            // Tarayıcı desteklemiyorsa butonu gizler
+            micBtn.style.display = 'none';
+            console.warn("Speech Recognition API is not supported in this browser.");
+        }
+        // --------------------------------------------------------
+
         input.addEventListener("input", () => { 
             const val = input.value.toLowerCase(); suggestions.innerHTML = ""; 
             if (!val) { suggestions.style.display = "none"; return; } 
