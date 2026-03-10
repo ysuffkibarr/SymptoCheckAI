@@ -6,6 +6,7 @@ from app.limiter import limiter
 from app.models.schemas import SymptomRequest
 from app.services.ml_service import SymptomClassifier
 from app.logger import logger
+from app.security import encrypt_data 
 
 router = APIRouter()
 
@@ -27,8 +28,10 @@ async def analyze(request: Request, req: SymptomRequest):
     if not req.symptoms.strip():
         logger.warning(f"IP: {request.client.host} tried to send empty symptoms.")
         raise HTTPException(status_code=400, detail="Symptoms cannot be empty.")
+
+    encrypted_symptoms = encrypt_data(req.symptoms)
+    logger.info(f"Analysis Requested. Encrypted Payload (Data for DB): {encrypted_symptoms}")
     
-    logger.info(f"Analysis requested for symptoms: {req.symptoms}")
     result = classifier.predict(req.symptoms)
     logger.success(f"Successfully predicted for IP: {request.client.host}")
     
