@@ -1,5 +1,7 @@
 import csv
 import re
+import os
+import pickle
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from rapidfuzz import process
@@ -15,48 +17,84 @@ def map_to_known_symptoms(user_symptoms, known_symptoms):
     mapped = []
     for sym in user_symptoms:
         sym = normalize_symptom(sym)
-        match, score, _ = process.extractOne(sym, known_symptoms, score_cutoff=60)
-        if match:
+        result = process.extractOne(sym, known_symptoms, score_cutoff=60)
+        if result:
+            match, score, _ = result
             mapped.append(match)
     return mapped
 
 class SymptomClassifier:
-    def __init__(self, csv_path):
+    def __init__(self, csv_path, model_cache_path="data/model_cache.pkl"):
+        self.csv_path = csv_path
+        self.model_cache_path = model_cache_path
+        self._load_or_train()
+
+    def _load_or_train(self):
+        csv_exists = os.path.exists(self.csv_path)
+        cache_exists = os.path.exists(self.model_cache_path)
+
+        if not csv_exists and not cache_exists:
+            raise FileNotFoundError(f"Veri dosyası bulunamadı: {self.csv_path}")
+
+        if cache_exists and csv_exists:
+            csv_mtime = os.path.getmtime(self.csv_path)
+            cache_mtime = os.path.getmtime(self.model_cache_path)
+            
+            if cache_mtime > csv_mtime:
+                with open(self.model_cache_path, "rb") as f:
+                    cache = pickle.load(f)
+                    self.data = cache["data"]
+                    self.disease_corpus = cache["disease_corpus"]
+                    self.vectorizer = cache["vectorizer"]
+                    self.X = cache["X"]
+                    self.feature_names = cache["feature_names"]
+                return
+
         self.data = []
-        with open(csv_path, encoding="utf-8") as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                symptoms = []
-                for i in range(1, 18):
-                    symp = row.get(f"Symptom_{i}")
-                    if symp and symp.strip():
-                        normalized = normalize_symptom(symp)
-                        symptoms.append(normalized)
-                disease = row["Disease"]
-                if symptoms:
-                    self.data.append({
-                        "disease": disease,
-                        "symptoms": symptoms
-                    })
+        if csv_exists:
+            with open(self.csv_path, encoding="utf-8") as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    symptoms = []
+                    for key, val in row.items():
+                        if key and key.startswith("Symptom_") and val and val.strip():
+                            symptoms.append(normalize_symptom(val))
+                            
+                    disease = row.get("Disease")
+                    if disease and symptoms:
+                        self.data.append({
+                            "disease": disease,
+                            "symptoms": symptoms
+                        })
 
         self.disease_corpus = [" ".join(d["symptoms"]) for d in self.data]
         self.vectorizer = TfidfVectorizer()
         self.X = self.vectorizer.fit_transform(self.disease_corpus)
         self.feature_names = self.vectorizer.get_feature_names_out() 
 
+        os.makedirs(os.path.dirname(self.model_cache_path), exist_ok=True)
+        with open(self.model_cache_path, "wb") as f:
+            pickle.dump({
+                "data": self.data,
+                "disease_corpus": self.disease_corpus,
+                "vectorizer": self.vectorizer,
+                "X": self.X,
+                "feature_names": self.feature_names
+            }, f)
+
     def _get_triage_level(self, disease_name):
         disease_lower = disease_name.lower()
         
-        critical_keywords = ['attack', 'stroke', 'dengue', 'malaria', 'typhoid', 'failure', 'cancer', 'tuberculosis', 'pneumonia', 'heart']
-        low_keywords = ['cold', 'flu', 'allergy', 'acne', 'fungal', 'hemorrhoids', 'common']
+        critical_pattern = re.compile(r'\b(attack|stroke|dengue|malaria|typhoid|failure|cancer|tuberculosis|pneumonia|heart)\b')
+        low_pattern = re.compile(r'\b(cold|flu|allergy|acne|fungal|hemorrhoids|common)\b')
         
-        if any(keyword in disease_lower for keyword in critical_keywords):
+        if critical_pattern.search(disease_lower):
             return {
                 "level": "CRITICAL (RED)", 
                 "color": "#dc3545", 
                 "action": "Immediate medical attention required. Proceed to the nearest Emergency Room."
             }
-        elif any(keyword in disease_lower for keyword in low_keywords):
+        elif low_pattern.search(disease_lower):
             return {
                 "level": "LOW (GREEN)", 
                 "color": "#28a745", 
