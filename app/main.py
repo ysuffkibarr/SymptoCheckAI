@@ -5,7 +5,8 @@ from slowapi.errors import RateLimitExceeded
 from app.api import routes
 from app.limiter import limiter
 from app.logger import logger 
-from app.waf import HoneyMindWAFMiddleware 
+from app.waf import HoneyMindWAFMiddleware
+from app.database import engine, Base 
 
 app = FastAPI(title="SymptoCheckAI API")
 
@@ -26,5 +27,9 @@ app.include_router(routes.router)
 
 @app.on_event("startup")
 async def startup_event():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+        
     logger.info("SymptoCheckAI Backend Services Successfully Started!")
-    logger.info("HoneyMind WAF (Web Application Firewall) is ACTIVE and protecting routes.")
+    logger.info("HoneyMind WAF is ACTIVE.")
+    logger.info("Async PostgreSQL Database Engine is ONLINE.")
