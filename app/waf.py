@@ -2,6 +2,7 @@ from fastapi import Request
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from app.logger import logger
+from app.utils import get_client_ip
 
 BANNED_IPS = set()
 
@@ -9,7 +10,7 @@ TRAP_ROUTES = ["/wp-admin", "/.env", "/api/hidden_admin", "/config.json", "/phpm
 
 class HoneyMindWAFMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
-        client_ip = request.headers.get("X-Forwarded-For", request.client.host).split(",")[0].strip()
+        client_ip = get_client_ip(request)
 
         if client_ip in BANNED_IPS:
             logger.warning(f"[HoneyMind WAF] Request blocked from banned IP -> {client_ip}")
@@ -21,6 +22,7 @@ class HoneyMindWAFMiddleware(BaseHTTPMiddleware):
             return JSONResponse(status_code=403, content={"detail": "Malicious activity detected. IP permanently banned."})
 
         user_agent = request.headers.get("user-agent", "").lower()
+            
         malicious_agents = ["sqlmap", "nmap", "dirbuster", "nikto", "zgrab"]
         
         if any(bot in user_agent for bot in malicious_agents):

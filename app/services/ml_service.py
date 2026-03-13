@@ -2,10 +2,13 @@ import csv
 import re
 import os
 import pickle
+from pathlib import Path
 import torch
 from sentence_transformers import SentenceTransformer, util
 from deep_translator import GoogleTranslator
 from app.logger import logger
+
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 def normalize_text(text):
     text = text.lower()
@@ -14,9 +17,9 @@ def normalize_text(text):
     return re.sub(r"\s+", " ", text).strip()
 
 class SymptomClassifier:
-    def __init__(self, csv_path, model_cache_path="data/semantic_cache.pkl"):
+    def __init__(self, csv_path, model_cache_path=None):
         self.csv_path = csv_path
-        self.model_cache_path = model_cache_path
+        self.model_cache_path = model_cache_path or str(BASE_DIR / "data" / "semantic_cache.pkl")
         
         logger.info("Initializing Elite Medical Engine (V4.1)... Loading PubMedBERT.")
         self.ai_model = SentenceTransformer('pritamdeka/S-PubMedBert-MS-MARCO')
