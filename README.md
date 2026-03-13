@@ -80,7 +80,6 @@ uvicorn app.main:app --reload
 
 ## 🔮 Future Roadmap
 
-- [ ] Containerize the application using Docker and docker-compose.
 - [ ] Transition from SQLite/Local-CSV to cloud-native vector databases (e.g., Pinecone, Milvus) for multi-million record scaling.
 - [ ] Implement a real-time admin dashboard using WebSockets for live epidemic tracking.
 - [ ] Integrate external medical APIs for detailed drug interaction and treatment recommendations.
