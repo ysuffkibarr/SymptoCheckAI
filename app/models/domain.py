@@ -11,7 +11,7 @@ class ClinicalRecord(Base):
     confidence_score = Column(Float, nullable=False)
     client_ip = Column(String, nullable=True)
 
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 class EpidemicLog(Base):
     __tablename__ = "epidemic_logs"
