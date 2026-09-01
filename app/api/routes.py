@@ -29,10 +29,6 @@ index_path = BASE_DIR / "static" / "index.html"
 classifier = SymptomClassifier(str(csv_path), str(model_path))
 
 async def get_anonymized_location(ip_address: str):
-    """
-    Takes an IP address, queries a fast geolocation API, and returns 
-    ONLY the city and country. The IP is then discarded for GDPR/KVKK compliance.
-    """
     if ip_address in ["127.0.0.1", "::1", "localhost"]:
         return {"country": "Turkey", "city": "Test City", "district": "Localhost"}
         
@@ -118,9 +114,6 @@ async def log_epidemic(log_data: schemas.EpidemicLogCreate, db: AsyncSession = D
 
 @router.get("/api/epidemic/logs", response_model=List[schemas.EpidemicLogResponse])
 async def get_epidemic_data(limit: int = 1000, db: AsyncSession = Depends(get_db)):
-    """
-    The visualization map and AI anomaly detection list recent cases.
-    """
     try:
         return await crud.get_recent_epidemic_logs_async(db=db, limit=limit)
     except Exception as e:
@@ -133,10 +126,6 @@ async def get_symptom_list(request: Request):
 
 @router.get("/api/epidemic/outbreaks")
 async def check_for_outbreaks(db: AsyncSession = Depends(get_db)):
-    """
-    Scans the database using statistical anomaly detection to find active outbreaks.
-    Returns a list of CRITICAL_RED zones for the heatmap dashboard.
-    """
     try:
         active_alerts = await detect_outbreaks(db)
         
