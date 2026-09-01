@@ -240,6 +240,27 @@
             </button>
         </div>
 
+        <div class="radar-container" style="margin-top: 40px; background: var(--surface-solid); padding: 30px; border-radius: 20px; border: 1px solid var(--border-color); box-shadow: 0 10px 30px rgba(0,0,0,0.02);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="font-size: 20px; font-weight: 700; color: #1d1d1f; display: flex; align-items: center; gap: 10px;">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 2v20"></path><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                    </svg>
+                    Canlı Salgın Radarı
+                </h2>
+                <button onclick="fetchOutbreaks()" style="background: none; border: none; color: var(--primary); font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+                    Güncelle
+                </button>
+            </div>
+            
+            <div id="radarResults" style="min-height: 100px; display: flex; flex-direction: column; gap: 12px;">
+                <div style="text-align: center; color: var(--text-gray); font-size: 14px; padding: 20px;">
+                    Veriler yükleniyor...
+                </div>
+            </div>
+        </div>
+
         <div class="results" id="results"></div>
     </div>
 
@@ -316,6 +337,52 @@
             suggestions.style.display = "block"; 
         });
         document.addEventListener("click", (e) => { if (!suggestions.contains(e.target) && e.target !== input) { suggestions.innerHTML = ""; suggestions.style.display = "none"; } });
+
+        async function fetchOutbreaks() {
+            const radarDiv = document.getElementById("radarResults");
+            radarDiv.innerHTML = "<div style='text-align: center; color: var(--text-gray); font-size: 14px; padding: 20px;'>Veriler yükleniyor...</div>";
+            
+            try {
+                const response = await fetch("/api/epidemic/outbreaks");
+                if (!response.ok) throw new Error("Salgın verisi alınamadı.");
+                
+                const data = await response.json();
+                
+                if (data.active_outbreaks && data.active_outbreaks.length > 0) {
+                    radarDiv.innerHTML = "";
+                    data.active_outbreaks.forEach(alert => {
+                        const alertBox = document.createElement("div");
+                        alertBox.style.padding = "16px";
+                        alertBox.style.borderRadius = "12px";
+                        alertBox.style.background = "rgba(220, 53, 69, 0.05)";
+                        alertBox.style.border = "1px solid rgba(220, 53, 69, 0.2)";
+                        alertBox.style.borderLeft = "4px solid #dc3545";
+                        
+                        alertBox.innerHTML = `
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                <strong style="color: #dc3545; font-size: 15px;">${alert.disease}</strong>
+                                <span style="background: #dc3545; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: bold;">${alert.risk_level}</span>
+                            </div>
+                            <div style="font-size: 14px; color: #1d1d1f; margin-bottom: 4px;">Konum: <strong>${alert.city} / ${alert.district}</strong></div>
+                            <div style="font-size: 13px; color: var(--text-gray);">Son Vakalar: ${alert.total_recent_cases} (Ortalama: ${alert.recent_daily_average}/gün)</div>
+                        `;
+                        radarDiv.appendChild(alertBox);
+                    });
+                } else {
+                    radarDiv.innerHTML = `
+                        <div style="text-align: center; padding: 20px; background: rgba(52, 199, 89, 0.05); border-radius: 12px; border: 1px solid rgba(52, 199, 89, 0.2);">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#34c759" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 10px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                            <div style="color: #2eb050; font-weight: 600; font-size: 15px;">Aktif Salgın Alarmı Yok</div>
+                            <div style="color: var(--text-gray); font-size: 13px; margin-top: 4px;">Olağandışı bir vaka artışı tespit edilmedi.</div>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                radarDiv.innerHTML = `<div style="text-align: center; color: #dc3545; font-size: 14px; padding: 20px;">Salgın radarı güncellenemedi. Lütfen daha sonra tekrar deneyin.</div>`;
+                console.error(error);
+            }
+        }
+        document.addEventListener("DOMContentLoaded", fetchOutbreaks);
 
         async function analyzeSymptoms() {
             const inputVal = input.value.trim(); 
