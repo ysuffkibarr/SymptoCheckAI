@@ -107,9 +107,6 @@ async def analyze(request: Request, req: SymptomRequest, db: AsyncSession = Depe
 
 @router.post("/api/epidemic_log", response_model=schemas.EpidemicLogResponse)
 async def log_epidemic(log_data: schemas.EpidemicLogCreate, db: AsyncSession = Depends(get_db)):
-    """
-    In the user's symptom analyses, the results and location are recorded in the data logs.
-    """
     try:
         log = await crud.create_epidemic_log_async(db=db, log=log_data)
         await db.commit()
