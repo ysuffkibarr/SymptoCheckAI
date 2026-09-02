@@ -26,3 +26,11 @@ class EpidemicLog(Base):
     raw_symptoms = Column(Text)
     diagnosed_disease = Column(String, index=True)
     confidence_score = Column(Float)
+
+class BlockedIP(Base):
+    __tablename__ = "blocked_ips"
+
+    id = Column(Integer, primary_key=True, index=True)
+    ip_address = Column(String, unique=True, index=True, nullable=False)
+    reason = Column(String, nullable=True)
+    blocked_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
