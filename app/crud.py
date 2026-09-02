@@ -26,3 +26,20 @@ async def blocked_ip_async(db: AsyncSession, ip_address: str, reason: str = None
         return
 
     new_block = BlockedIP(ip_address=ip_address, reason=reason)
+    db.add(new_block)
+    try:
+        await db.commit()
+        await db.refresh(new_block)
+        return new_block
+    except Exception as e:
+        await db.rollback()
+
+async def is_ip_blocked_async(db: AsyncSession, ip_address: str) -> bool:
+    stmt = select(BlockedIP).filter(BlockedIP.ip_address == ip_address)
+    result = await db.execute(stmt)
+    return result.scalars().first() is not None
+
+async def get_all_blocked_ips_async(db: AsyncSession):
+    stmt = select(BlockedIP.ip_address)
+    result = await db.execute(stmt)
+    return result.scalars().all()

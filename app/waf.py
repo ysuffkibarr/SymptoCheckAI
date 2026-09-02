@@ -1,34 +1,37 @@
-from fastapi import Request
-from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
-from app.logger import logger
+from fastapi.responses import JSONResponse
+from fastapi import Request
+import time
+
+from app.database import AsyncSessionLocal
+from app.crud import is_ip_blocked_async, block_ip_async
 from app.utils import get_client_ip
+from app.logger import logger
 
-BANNED_IPS = set()
+request_counts = {}
+BLOCK_THRESHOLD = 50
+TIME_WINDOW = 60
 
-TRAP_ROUTES = ["/wp-admin", "/.env", "/api/hidden_admin", "/config.json", "/phpmyadmin"]
-
-class HoneyMindWAFMiddleware(BaseHTTPMiddleware):
+class WAFMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         client_ip = get_client_ip(request)
+        current_time = time.time()
 
-        if client_ip in BANNED_IPS:
-            logger.warning(f"[HoneyMind WAF] Request blocked from banned IP -> {client_ip}")
-            return JSONResponse(status_code=403, content={"detail": "Access Denied by HoneyMind WAF. Your IP is banned."})
+        async with AsyncSessionLocal() as db:
+            if await is_ip_blocked_async(db, client_ip):
+                logger.warning(f"WAF: Blocked IP access attempt - {client_ip}")
+                return JSONResponse(status_code=403, content={"detail": "Access Denied: Your IP is permanently blocked."})
 
-        if any(trap in request.url.path for trap in TRAP_ROUTES):
-            BANNED_IPS.add(client_ip)
-            logger.critical(f"[HoneyMind WAF] TRAP TRIGGERED! Malicious IP Blacklisted: {client_ip} | Attempted path: {request.url.path}")
-            return JSONResponse(status_code=403, content={"detail": "Malicious activity detected. IP permanently banned."})
+            if client_ip not in request_counts:
+                request_counts[client_ip] = []
 
-        user_agent = request.headers.get("user-agent", "").lower()
-            
-        malicious_agents = ["sqlmap", "nmap", "dirbuster", "nikto", "zgrab"]
-        
-        if any(bot in user_agent for bot in malicious_agents):
-            BANNED_IPS.add(client_ip)
-            logger.critical(f"[HoneyMind WAF] Malicious tool detected! IP: {client_ip} | Tool: {user_agent}")
-            return JSONResponse(status_code=403, content={"detail": "Automated attack tools are strictly prohibited."})
+            request_counts[client_ip] = [t for t in request_counts[client_ip] if current_time - t < TIME_WINDOW]
+            request_counts[client_ip].append(current_time)
+
+            if len(request_counts[client_ip]) > BLOCK_THRESHOLD:
+                await block_ip_async(db, client_ip, reason="Rate limit exceeded (Possible DDoS/Brute Force)")
+                logger.error(f"WAF: Suspicious activity detected, IP permanently blocked - {client_ip}")
+                return JSONResponse(status_code=403, content={"detail": "Access Denied: Suspicious activity detected."})
 
         response = await call_next(request)
         return response
