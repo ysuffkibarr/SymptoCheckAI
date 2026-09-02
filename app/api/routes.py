@@ -1,4 +1,5 @@
-from fastapi import APIRouter, HTTPException, Request, Depends
+from fastapi import APIRouter, HTTPException, Request, Depends, Security, status
+from fastapi.security import APIKeyHeader
 from fastapi.responses import HTMLResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -139,8 +140,27 @@ async def check_for_outbreaks(db: AsyncSession = Depends(get_db)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Anomaly detection failed: {str(e)}")
 
+api_key_header = APIKeyHeader(name="X-Admin-Key")
+
+def verify_admin(api_key: str = Security(api_key_header)):
+    correct_key = os.getenv("ADMIN_SECRET_KEY")
+    if not correct_key or api_key != correct_key:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, 
+            detail="Access Denied: Invalid Admin Key"
+        )
+    return api_key
+
 @router.get("/admin/clinical-records")
-async def get_decrypted_records(limit: int = 50, db: AsyncSession = Depends(get_db)):
+async def get_decrypted_records(
+    limit: int = 50, 
+    db: AsyncSession = Depends(get_db),
+    admin_key: str = Depends(verify_admin)
+):
+    """
+    ADMIN ENDPOINT: Fetches securely stored clinical records and decrypts patient symptoms.
+    Protected by X-Admin-Key API header.
+    """
     try:
         stmt = select(ClinicalRecord).order_by(ClinicalRecord.created_at.desc()).limit(limit)
         result = await db.execute(stmt)
@@ -151,8 +171,8 @@ async def get_decrypted_records(limit: int = 50, db: AsyncSession = Depends(get_
             try:
                 clear_symptoms = decrypt_data(record.encrypted_symptoms)
             except Exception as e:
-                clear_symptoms = "[Decryption Failed]"
-                logger.error(f"Decryption failed for record ID {record.id}: {e}")
+                clear_symptoms = "[DECRYPTION FAILED - INVALID KEY]"
+                logger.error(f"Decryption error for record ID {record.id}: {e}")
 
             decrypted_list.append({
                 "id": record.id,
@@ -162,10 +182,10 @@ async def get_decrypted_records(limit: int = 50, db: AsyncSession = Depends(get_
                 "decrypted_symptoms": clear_symptoms,
                 "timestamp": record.created_at
             })
-
-        logger.info(f"Admin accessed decrypted clinical records. Count: {len(decrypted_list)}")
+        
+        logger.info(f"Authorized admin accessed decrypted records. Count: {len(decrypted_list)}")
         return {"status": "success", "retrieved_records": len(decrypted_list), "data": decrypted_list}
-
+        
     except Exception as e:
         logger.error(f"Failed to fetch clinical records: {str(e)}")
-        raise HTTPException(status_code=500, detail="Internal server error while fetching securely stored records.")
+        raise HTTPException(status_code=500, detail="Internal server error.")
