@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Request, Depends
 from fastapi.responses import HTMLResponse
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
 import os
 from pathlib import Path
 from typing import List
@@ -13,6 +14,7 @@ from app.models import schemas
 from app.services.ml_service import SymptomClassifier
 from app.logger import logger
 from app.security import encrypt_data
+from app.security import decrypt_data
 from app.database import get_db
 from app.models.domain import ClinicalRecord 
 from app import crud
@@ -136,3 +138,34 @@ async def check_for_outbreaks(db: AsyncSession = Depends(get_db)):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Anomaly detection failed: {str(e)}")
+
+@router.get("/admin/clinical-records")
+async def get_decrypted_records(limit: int = 50, db: AsyncSession = Depends(get_db)):
+    try:
+        stmt = select(ClinicalRecord).order_by(ClinicalRecord.created_at.desc()).limit(limit)
+        result = await db.execute(stmt)
+        records = result.scalars().all()
+
+        decrypted_list = []
+        for record in records:
+            try:
+                clear_symptoms = decrypt_data(record.encrypted_symptoms)
+            except Exception as e:
+                clear_symptoms = "[Decryption Failed]"
+                logger.error(f"Decryption failed for record ID {record.id}: {e}")
+
+            decrypted_list.append({
+                "id": record.id,
+                "client_ip": record.client_ip,
+                "predicted_disease": record.predicted_disease,
+                "confidence_score": round(record.confidence_score, 2),
+                "decrypted_symptoms": clear_symptoms,
+                "timestamp": record.created_at
+            })
+
+        logger.info(f"Admin accessed decrypted clinical records. Count: {len(decrypted_list)}")
+        return {"status": "success", "retrieved_records": len(decrypted_list), "data": decrypted_list}
+
+    except Exception as e:
+        logger.error(f"Failed to fetch clinical records: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error while fetching securely stored records.")

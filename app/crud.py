@@ -20,18 +20,21 @@ async def get_recent_epidemic_logs_async(db: AsyncSession, limit: int = 1000):
     result = await db.execute(query)
     return result.scalars().all()
 
-async def blocked_ip_async(db: AsyncSession, ip_address: str, reason: str = None):
+from sqlalchemy.future import select
+from app.models.domain import BlockedIP
+
+async def block_ip_async(db: AsyncSession, ip_address: str, reason: str = None):
     is_blocked = await is_ip_blocked_async(db, ip_address)
     if is_blocked:
         return
-
+        
     new_block = BlockedIP(ip_address=ip_address, reason=reason)
     db.add(new_block)
     try:
         await db.commit()
         await db.refresh(new_block)
         return new_block
-    except Exception as e:
+    except Exception:
         await db.rollback()
 
 async def is_ip_blocked_async(db: AsyncSession, ip_address: str) -> bool:

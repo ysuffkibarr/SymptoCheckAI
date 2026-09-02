@@ -5,7 +5,7 @@ from slowapi.errors import RateLimitExceeded
 from app.api import routes
 from app.limiter import limiter
 from app.logger import logger 
-from app.waf import HoneyMindWAFMiddleware
+from app.waf import WAFMiddleware
 from app.database import engine, Base 
 
 app = FastAPI(title="SymptoCheckAI API")
@@ -13,7 +13,7 @@ app = FastAPI(title="SymptoCheckAI API")
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-app.add_middleware(HoneyMindWAFMiddleware)
+app.add_middleware(WAFMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
